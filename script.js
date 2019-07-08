@@ -1,5 +1,3 @@
-
-
 d3.select('#chartbox').html(null);
 var radius =1;
 
@@ -17,11 +15,48 @@ d3.csv("./LosAngeles.csv").then(function(data){
   );
   console.log(csv_data);
 */
-var stDate='2012-10-31 24:00:00';
-var enDate='2012-12-31 24:00:00';
+var stDate=new Date(2012,11 ,00 ,00 ,00 ,00);
+var enDate=new Date(2013,1 ,28 ,00 ,00 ,00);
+console.log(stDate);
+console.log(enDate);
 function setNextDate(){
-  Date.stDate.add({months: 3});
-  Date.enDate.add({months: 3});
+stDate.setMonth(stDate.getMonth()+3)
+enDate.setMonth(enDate.getMonth()+3);
+console.log(stDate);
+console.log(enDate);
+d3.selectAll('.circles').remove();
+drawData();
+}
+function setPrevDate(){
+  stDate.setMonth(stDate.getMonth()-3);
+  enDate.setMonth(enDate.getMonth()-3);
+  console.log(stDate);
+  console.log(enDate);
+  d3.selectAll('.circles').remove();
+  drawData();
+}
+    function drawData(){
+     // stDate=Date.parse(stDate,"Y-m-d g:i a");
+     // enDate=Date.parse(enDate,"Y-m-d g:i a");
+      d3.csv("./LosAngeles.csv").then(function(data){
+        data.forEach(function(d){
+        var year=  d.datetime.substring(0,4);
+        var month = d.datetime.substring(5,7);
+        var day= d.datetime.substring(8,10);
+        var h = d.datetime.substring(11,13);
+        var m = d.datetime.substring(14,16);
+        var s = d.datetime.substring(17,19);
+        d.datetime  =new Date(year,month,day,h,m,s);
+        d.humidity= +d.humidity;
+        d.pressure= +d.pressure;
+        d.temperature= +d.temperature;
+        d.wind_speed = +d.wind_speed;
+        if(d.datetime >= stDate && d.datetime<=enDate){
+          svg.append("circle").attr('class', 'circles').attr("cx",x(d.humidity)).attr("cy",y(d.pressure)).attr("r","1").on('mouseover', handleMouseOver).on('mouseout', handleMouseOut);
+        }
+        })
+        }
+        );
 }
 
 
@@ -55,7 +90,7 @@ svg.selectAll('circle').on('mouseout', handleMouseOut);
 var x1 = d3.scaleLinear().domain([margin.left,width-margin.right]).range([xMin, xMax]);
 var y1 = d3.scaleLinear().domain([height-margin.top,margin.bottom]).range([yMin, yMax]);
 
-function handleMouseOver(i) {  // Add interactivity
+function handleMouseOver(d, i) {  // Add interactivity
   // Use D3 to select element, change color and size
   var circle=this;
   d3.select(this).attr('fill', "white").attr('r', radius*2);
@@ -65,7 +100,7 @@ function handleMouseOver(i) {  // Add interactivity
     return [x1(circle.cx.baseVal.value).toFixed(2), y1(circle.cy.baseVal.value).toFixed(2)];  // Value of the text
   }).attr('fill', 'white');
 }
-function handleMouseOut(i) {
+function handleMouseOut(d, i) {
   // Use D3 to select element, change color back to normal
   d3.select(this).attr('fill',  "black").attr('r', radius);
   var circle=this;
