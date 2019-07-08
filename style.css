@@ -1,0 +1,28 @@
+
+        body {
+            margin: 25px;
+            background-color: #444944;
+            font-family: arial, sans-serif;
+            font-size: 14px;
+        }
+
+        h1 {
+            font-size: 35px;
+            color: #FFFFFF;
+            margin-top: 5px;
+        }
+
+        p {
+            font-size: 20px;
+            margin-top: 2px;
+        }
+
+        #header {
+            position: relative;
+            top: 10px;
+            left: 10px;
+        }
+
+        #chartbox {
+            position: center;
+        }
