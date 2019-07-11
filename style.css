@@ -23,11 +23,20 @@
             left: 10px;
         }
         #scbtn {
+            align-content: center;
             float: left;
             height:50px;
             width: 400px ;
         }
+        .axis { font: 14px sans-serif; }
+
+        .line {
+            fill: 'none';
+            stroke: steelblue;
+            stroke-width: 2px;
+             }
         #hibtn {
+            align-content: center;
             float: left;
             height:50px;
             width: 400px ;

@@ -1,3 +1,6 @@
+//console.log(_dataset[0].datetime);
+
+
 dataset.then(function(data){
   //callbackfunc is now here.....
   var json_data=data;
@@ -14,10 +17,65 @@ dataset.then(function(data){
   const height=400;  const width=400;
   var prSpan=[];  var hmSpan=[];  var prDay=[];
   var hmDay=[];  var sumprD,sumhmD;  var avgPr=[]; var avgHm=[];
-  var hisData=[];
+  var hisData=[]; var tempData=[]; var maxTmp=[];
   var winData=[];var wd=[];
   var scaleY;var scaleX ; var scaleCol;
   var wspd=0;
+
+
+  function getlineData(){
+    for(i=0;i<json_data.length;i++){
+      if(json_data[i][3]!=0){
+        var tmp=[json_data[i][0],json_data[i][3]];
+        tempData.push(tmp);
+      }
+    }
+    for(i=0;i<tempData.length;i++){
+        var tmp=tempData[i][1];
+        maxTmp.push(tmp);
+    }
+    let maxTemp=d3.max(maxTmp);
+    let minTemp=d3.min(maxTmp);
+    var tempScaleY= d3.scaleLinear()
+      .domain([minTemp,maxTemp])
+      .range([height-margin.bottom, margin.top]);
+      console.log(tempData)
+    var tempScaleX=d3.scaleTime()
+      .domain([tempData[0][0], tempData[tempData.length-1][0]])
+      .range([margin.left, width*2-margin.right]);
+      console.log(tempScaleY(tempData[15][1]));
+      var line = d3.line()
+      .x(function(d, i) { return tempScaleX(tempData[i][0]); }) // set the x values for the line generator
+      .y(function(d,i) { return tempScaleY(tempData[i][1]); }) // set the y values for the line generator 
+      .curve(d3.curveMonotoneX); // apply smoothing to the line
+    var lsvg = d3.select('#lchart')
+      .append('svg')
+      .attr("width", width*2 + margin.left + margin.right)
+      .attr("height", height +margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    lsvg.append("path")
+      .data([tempData])
+      .attr("class", "line")
+      .attr("d", line);
+    lsvg.append("g")
+    .attr("class", "x axis")
+    .call(d3.axisBottom(tempScaleX).tickFormat(d3.timeFormat("%Y-%m-%d")))
+    .attr("transform", "translate(0," + (height-margin.bottom) + ")")
+    .selectAll("text")	
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-65)");
+    console.log(maxTemp);
+    console.log(minTemp);
+    lsvg.append("g")
+    .attr("class", "axis")
+    .attr("transform", "translate(" + margin.left+ ", 0)")
+    .call(d3.axisLeft(tempScaleY));
+  }
+  getlineData();
+
   function getHistData(){
     for(i=0;i<json_data.length;i++){
       var tmp=[json_data[i][4],json_data[i][5]];
@@ -61,7 +119,7 @@ dataset.then(function(data){
         .attr("y",scaleY(wd[i].count+1))
         .attr('width', ((width-margin.left-margin.right)/wd.length)-1)
         .attr('height', (height-margin.bottom)-scaleY(wd[i].count+1))
-        .attr('fill', scaleCol(wd[i].count))
+        .attr('fill', scaleCol(wd[i].count+1))
         .attr("rx", "3")
         .attr('ry', "3")
       hisvg.append('text')
@@ -126,9 +184,9 @@ dataset.then(function(data){
       .base(2)
       .domain([1, maxCnt+1])
       .range([height-margin.bottom, margin.top+20]);
-    scaleCol=d3.scaleLinear()
-      .domain([minCnt, maxCnt])
-      .range([d3.rgb('steelblue').brighter(), d3.rgb('steelblue')]);
+    scaleCol=d3.scaleLog()
+      .domain([minCnt+1, maxCnt+1])
+      .range([d3.color('lightblue'), d3.color('steelblue')]);
     scaleX= d3.scaleBand()
       .domain(ticks)     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
       .range([margin.left, width-margin.right]);
@@ -156,7 +214,7 @@ for(i=0;i<wd.length;i++){
         .attr("y",scaleY(wd[i].count+1))
         .attr('width', ((width-margin.left-margin.right)/wd.length)-1)
         .attr('height', (height-margin.bottom)-scaleY(wd[i].count+1))
-        .attr('fill', scaleCol(wd[i].count));
+        .attr('fill', scaleCol(wd[i].count+1));
         d3.select('#t-'+i)
         .transition()
         .duration(1000)
@@ -197,8 +255,11 @@ for(i=0;i<wd.length;i++){
     hmSpan=[];
     if(a>0 && a<json_data.length && b>0 &&b<json_data.length){
       for(i = a; i <= b; i++){
-        prSpan.push(json_data[i][2]);
-        hmSpan.push(json_data[i][1]);
+        if(json_data[i][2]!=0){
+          prSpan.push(json_data[i][2]);
+          hmSpan.push(json_data[i][1]);
+        }
+        
       }
       avgPr=[];
       avgHm=[];
@@ -217,7 +278,6 @@ for(i=0;i<wd.length;i++){
         }
       }
       xMin=0; xMax=100;
-      //  console.log(avgPr)
       yMax= Math.max(...avgPr);yMin= Math.min(...avgPr);
     }else{
       alert("DateRange "+stDate.toDateString() +' - ' +enDate.toDateString()+" is invalid");
@@ -270,8 +330,9 @@ for(i=0;i<wd.length;i++){
   function handleMouseOver(d, i) {  // Add interactivity
     // Use D3 to select element, change color and size
     var circle = this;
+    d3.selectAll('.circles').transition().duration(800).attr('fill-opacity', 0.3);
     d3.select(this).transition()
-      .duration(800).attr('fill', "red").attr('r', radius*2);
+      .duration(800).attr('fill', "red").attr('fill-opacity', 1).attr('r', radius*2);
     // console.log("t" + circle.cx.baseVal.valueAsString+ "-" + circle.cy.baseVal.valueAsString+ "-" + i);
     // Specify where to put label of text
     svg.append("rect")
@@ -294,10 +355,11 @@ for(i=0;i<wd.length;i++){
   }
   function handleMouseOut(d, i) {
     // Use D3 to select element, change color back to normal
-    d3.select(this).transition()
-      .duration(800).attr('fill',  "black").attr('r', radius);
-    var circle=this;
-      // Select text by id and then remove
+    
+    d3.selectAll('.circles').transition()
+    .duration(200).attr('r', radius).attr('fill-opacity', 1);
+      var circle=this;
+      // Select text & rect by id and then remove
     document.getElementById('t' + circle.cx.baseVal.valueAsString + "-" + circle.cy.baseVal.valueAsString + "-" + i)
       .remove();   
     document.getElementById('r' + circle.cx.baseVal.valueAsString + "-" + circle.cy.baseVal.valueAsString + "-" + i)
