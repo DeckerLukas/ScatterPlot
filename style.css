@@ -22,7 +22,19 @@
             top: 10px;
             left: 10px;
         }
-
-        #chartbox {
-            position: center;
+        #scbtn {
+            float: left;
+            height:50px;
+            width: 400px ;
         }
+        #hibtn {
+            float: left;
+            height:50px;
+            width: 400px ;
+        }
+        .plot {
+            float: left;
+            height: 400px;
+            width: 400px ;
+        }
+       
