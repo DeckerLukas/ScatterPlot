@@ -6,9 +6,11 @@ dataset.then(function(data){
   var json_data=data;
   d3.select('#chartbox').html(null);
   var svg = d3.select('#chartbox').append('svg');
-  var radius =1.6;
-  var stDate= new Date('2012-12-01 00:00:00');
-  var enDate=new Date('2013-02-21 00:00:00');
+  var radius =2; var lr=0;
+  var filtered=[]; var weatherdc=[];
+  var stDate= new Date('2012-12-31 00:00:00');
+  var enDate=new Date('2013-06-30 00:00:00');
+  var steps=6; let movingSpan=360;
   var margin = {top: 20, right: 30, bottom: 30, left: 40};
   d3.select('#dateRange').html(stDate.toDateString() +' - ' +enDate.toDateString());
   var hisvg = d3.select('#chart').append('svg');
@@ -16,84 +18,260 @@ dataset.then(function(data){
   //global var Declarations
   var xMin;var xMax;var yMin;var yMax;var x;var y;var x1;var y1;
   const height=400;  const width=400;
-  var prSpan=[];  var hmSpan=[];  var prDay=[];
-  var hmDay=[];  var sumprD,sumhmD;  var avgPr=[]; var avgHm=[];
+  const bheight=250;
+  var toggle=[];
+  toggle.push(false);
+  toggle.push(false);
+  toggle.push(false);
+  toggle.push(false);
+  toggle.push(false);
+  toggle.push(false);
+  var margin1 ={top: 20, right: 20, bottom: 120, left: 40};
+  var margin2= {top: 300, right: 20, bottom: 40, left: 40};
+  var height1; var width1;
+  var height2; var x2;var y2; var brush; var zoom;
+  var line2 = d3.line(), movAvgpast=d3.line(), movAvgfut=d3.line();
+  var selectCircle;  var context; var focus; var lineChart;
+  var prSpan=[];  var hmSpan=[];  var prDay=[]; var clip;
+  var hmDay=[];  var sumprD,sumhmD;  var avgPr=[]; var avgHm=[];var avgWD=[];
   var hisData=[]; var tempData=[]; var maxTmp=[];
   var winData=[];var wd=[]; var keys;
-  var scaleY;var scaleX ; var scaleCol;
+  var scaleY;var scaleX ;
   var wspd=0; var line = d3.line(); var tempScaleX; var tempScaleY; var txAxis; var tyAxis;
   var winArr=[]; var z = d3.scaleOrdinal();
-
+  var actDay; var normalizedHist=false; var scdata=[];
 
   function getlineData(){
     updateline();
-    lsvg.attr("width", width*2 + margin.left + margin.right)
-      .attr("height", height+60 +margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-    lsvg.append("path")
-      .data([tempData])
-      .attr("class", "line")
-      .attr("d", line);
-    lsvg.append("g")
-    .attr("id", "x-axis")
-    .call(txAxis)
-    .attr("transform", "translate(0," + (height-margin.bottom) + ")")
-    .selectAll("text")	
-        .style("text-anchor", "end")
-        .attr("dx", "-.8em")
-        .attr("dy", ".15em")
-        .attr("transform", "rotate(-65)");
-    lsvg.append("g")
-    .attr("id", "y-axis")
-    .attr("transform", "translate(" + margin.left+ ", 0)")
-    .call(tyAxis);
-  }
-  getlineData();
+  }   
+ getlineData();
   function updateline(){
     while(tempData.length){
       tempData.pop();
     }
     for(i=0;i<json_data.length;i++){
       if(json_data[i][3]!=0 && json_data[i][0]>=stDate && json_data[i][0]<=enDate){
-        var tmp=[json_data[i][0],json_data[i][3]];
+        var tmp=[json_data[i][0],json_data[i][3], json_data[i][4],json_data[i][5]];
         tempData.push(tmp);
       }
     }
-    while(maxTmp.length){
-      maxTmp.pop();
-    }
+    maxTmp=[];
     for(i=0;i<tempData.length;i++){
         var tmp=tempData[i][1];
         maxTmp.push(tmp);
     }
     let maxTemp=d3.max(maxTmp);
     let minTemp=d3.min(maxTmp);
+    lsvg.attr("width",750)
+    .attr("height", 400)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+  width1 = +lsvg.attr('width')-margin1.left-margin1.right;
+  height1 = +lsvg.attr('height')-margin1.top- margin1.bottom;
+  height2 = +lsvg.attr('height')-margin2.top - margin2.bottom;
     tempScaleY= d3.scaleLinear()
       .domain([minTemp,maxTemp])
-      .range([height-margin.bottom, margin.top]);
+      .range([height1, 0]);
     tempScaleX=d3.scaleTime()
       .domain([tempData[0][0], tempData[tempData.length-1][0]])
-      .range([margin.left, width*2-margin.right]);
-    line.x(function(d, i) { return tempScaleX(tempData[i][0]); }) // set the x values for the line generator
-      .y(function(d,i) { return tempScaleY(tempData[i][1]); }) // set the y values for the line generator 
-      .curve(d3.curveMonotoneX); // apply smoothing to the line
-    d3.select('.line').attr('d', line);
-    txAxis = d3.axisBottom(tempScaleX).tickFormat(d3.timeFormat("%Y-%m-%d"));
+      .range([0, width1]);
+    x2=d3.scaleTime()
+    .domain([tempData[0][0], tempData[tempData.length-1][0]])
+    .range([0, width1]);
+    y2=d3.scaleLinear()
+      .domain([minTemp,maxTemp])
+      .range([height2,0]);
+    txAxis = d3.axisBottom(tempScaleX);
     tyAxis = d3.axisLeft(tempScaleY);
-    d3.select('#x-axis').call(txAxis).selectAll("text")	
-    .style("text-anchor", "end")
-    .attr("dx", "-.8em")
-    .attr("dy", ".15em")
-    .attr("transform", "rotate(-65)");;
-    d3.select('#y-axis').call(tyAxis);
-    }
+    txAxis2 = d3.axisBottom(x2);
 
+    brush = d3.brushX()
+      .extent([[0,0], [width1, height2]])
+      .on('brush end', brushed);
+    zoom = d3.zoom()
+      .scaleExtent([1,Infinity])
+      .translateExtent([0,0],[width1,height1])
+      .extent([0,0],[width1,height1])
+      .on('zoom', zoomed);
+
+      line.x(function(d, i) { return tempScaleX(tempData[i][0]); }) // set the x values for the line generator
+        .y(function(d,i) { return tempScaleY(tempData[i][1]); }) // set the y values for the line generator 
+        .curve(d3.curveMonotoneX); // apply smoothing to the line
+      line2.x(function(d, i) { return x2(tempData[i][0]); })
+        .y(function(d,i) { return y2(tempData[i][1]); });
+      movAvgpast.x(function(d, i) { return tempScaleX(tempData[i][0]); })
+        .y(function(d,i){
+          let sum=0;
+          if(i>movingSpan){
+            for(j=i-movingSpan;j<i;j++){
+              sum = sum + tempData[j][1];
+            }
+            return tempScaleY(sum/movingSpan);
+          }else{
+            return tempScaleY(285);
+          }
+      });
+      movAvgfut.x(function(d, i) { return tempScaleX(tempData[i][0]); })
+      .y(function(d,i){
+        let sum=0;
+        if(i>(movingSpan/2)&& i<tempData.length-(movingSpan/2)){
+        for(j=i-(movingSpan/2);j<i+(movingSpan/2);j++){
+          sum+=tempData[j][1]
+        }
+        return tempScaleY(sum/movingSpan);
+      }else{return tempScaleY(285)}
+      });
+    clip = lsvg.append('defs').append('svg:clipPath')
+      .attr('id', 'clip')
+      .append('svg:rect')
+      .attr('width', width1)
+      .attr('height', height1)
+      .attr('x', 0)
+      .attr('y', 0);
+
+    lineChart=lsvg.append('g')
+      .attr('class', 'focus')
+      .attr('transform', 'translate('+margin1.left+','+margin1.top+')')
+      .attr('clip-path', 'url(#clip)');
+    focus = lsvg.append('g')
+      .attr('class', 'focus')
+      .attr('transform', 'translate('+margin1.left+','+margin1.top+')');
+    context = lsvg.append('g')
+      .attr('class', 'context')
+      .attr('transform', 'translate('+margin2.left+','+margin2.top+')')
+    
+    focus.append('g')
+      .attr('class', 'axis axis--x')
+      .attr('transform', 'translate(0,'+height1+')')
+      .call(txAxis);
+    focus.append('g')
+      .attr('class', 'axis axis--y')
+      .call(tyAxis);
+    lsvg.append('text')
+    .attr('x',0)
+    .attr('y',18)
+    .text('Kelvin')
+   lineChart.append('path')
+    .datum(tempData)
+    .attr('class', 'line')
+    .attr('d', line);
+  lineChart.append('path')
+    .datum(tempData)
+    .attr('class', 'pastAvgline')
+    .attr('d', movAvgpast)
+  lineChart.append('path')
+    .datum(tempData)
+    .attr('class', 'futAvgline')
+    .attr('d', movAvgfut)
+  context.append('path')
+    .datum(tempData)
+    .attr('class', 'line')
+    .attr('d', line2);
+  context.append('g')
+    .attr('class', 'axis axis--x')
+    .attr('transform', 'translate(0,'+height2+')')
+    .call(txAxis2);
+  context.append('g')
+    .attr('class', "brush")
+    .call(brush)
+    .call(brush.move, tempScaleX.range());
+    selectCircle = lsvg.selectAll(".circle")
+    .data(tempData)
+  lsvg.append('rect')
+    .attr('class', 'zoom')
+    .attr('width', width1)
+    .attr('height', height1)
+    .attr('transform', 'translate('+margin1.left+','+margin1.top+')')
+    .call(zoom);
+
+    actDay = new Date(stDate);
+
+    selectCircle.enter().append('circle')
+     .attr('class', function(d,i){
+       str=d[2];
+       replaced = str.split(' ').join('_');
+       if(d[3]<3){
+         tmp=d[3];
+       }
+       if(d[3]>=3 &&d[3]<=5){
+         tmp=3;
+       }else if(d[3]>=6 && d[3]<=10){
+        tmp= 4;
+       }else if(d[3]>=11 &&d[3]<=17){
+         tmp=5;
+       }
+       return 'circle c-'+tmp+'-'+replaced;
+   })
+     .attr('id', function(d,i){
+        return 'c-'+d[0].toISOString().substring(0,11);
+     })
+    .attr('r', lr)
+    .attr('cx',  function(d, i) { return tempScaleX(tempData[i][0]); }) // set the x values for the line generator
+    .attr('cy', function(d,i) { return tempScaleY(tempData[i][1]); })
+    .attr('transform', 'translate('+margin1.left+','+margin1.top+')')
+    .attr('fill', function(d,i){
+      if(d[3]==0){
+        return '#1a9850';
+      }else if(d[3]==1){
+        return '#91cf60';
+      }else if(d[3]==2){
+        return '#d9ef8b';
+      } else if(d[3]>=3 &&d[3]<=5){
+        return'#fee08b';
+      }else if(d[3]>=6 && d[3]<=10){
+        return '#fc8d59';
+      }else if(d[3]>=11 &&d[3]<=17){
+        return '#d73027';
+      }
+    })
+    .on('mouseover', mover).on('mouseout', mout)
+}
+function brushed() {
+  if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+  var s = d3.event.selection || x2.range();
+  tempScaleX.domain(s.map(x2.invert, x2));
+  lineChart.selectAll(".line").attr("d", line);
+  lineChart.selectAll('.pastAvgline').attr('d', movAvgpast);
+  lineChart.selectAll('.futAvgline').attr('d', movAvgfut);
+  lsvg.selectAll(".circle")
+      .attr('cx',  function(d, i) { return tempScaleX(tempData[i][0]); });
+  focus.selectAll(".axis--x").call(txAxis);
+  lsvg.selectAll(".zoom").call(zoom.transform, d3.zoomIdentity
+      .scale( width1/ (s[1] - s[0]))
+      .translate(-s[0], 0));
+}
+
+function zoomed() {
+  if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return; // ignore zoom-by-brush
+  var t = d3.event.transform;
+  tempScaleX.domain(t.rescaleX(x2).domain());
+  lineChart.selectAll(".line").attr("d", line);
+  lineChart.selectAll('.pastAvgline').attr('d', movAvgpast);
+  lineChart.selectAll('.futAvgline').attr('d', movAvgfut);
+  focus.selectAll(".axis--x").call(txAxis);
+  lsvg.selectAll(".circle")
+      .attr('cx',  function(d, i) { return tempScaleX(tempData[i][0]); });
+  context.selectAll(".brush").call(brush.move, tempScaleX.range().map(t.invertX, t));
+}
+function mover(d,i){
+  str=d[0].toISOString();
+  svg.selectAll('.c-'+str.substring(0,11))
+    .attr('stroke', 'black')
+    .attr('r', radius*1.5);
+ }
+function mout(d,i){
+  str=d[0].toISOString();
+  svg.selectAll('.c-'+str.substring(0,11))
+    .attr('stroke', 'none')
+    .attr('r', radius);
+    d3.select(this).attr('r', lr);
+}
     ///HISTOGRAM
   function getHistData(){
     while(hisData.length){
       hisData.pop();
     }
+   
     for(i=0;i<json_data.length;i++){
       if(json_data[i][0]>=stDate && json_data[i][0]<=enDate){
         
@@ -132,50 +310,154 @@ dataset.then(function(data){
   getHistData();
   function recMouseHover(d, i) {
     var rec=this;
-    console.log(rec)
-    d3.select(this).attr('stroke', "black");
+    console.log(d,i);
+    d3.select(this).attr('stroke', 'black');
     hisvg.append("rect")
-    .attr("id", "rec_" +  i)
-    .attr("x",  rec.x.baseVal.value+15 )
-    .attr("y", rec.y.baseVal.value-8)
-    .attr('width', '20')
-    .attr('height', '14')
-    .attr('fill', 'white');
+      .attr("id", "rec_" +  i)
+      .attr("x",  rec.x.baseVal.value+15 )
+      .attr("y", rec.y.baseVal.value-8)
+      .attr('width', '20')
+      .attr('height', '14')
+      .attr('fill', 'white')
+      .attr('fill-opacity', 0.5);
   
-  hisvg.append("text")
-    .attr("id", "tex_" +  i)
-    .attr("x",  rec.x.baseVal.value + 15)
-    .attr("y", rec.y.baseVal.value+5)
-    .attr('fill', 'black')
-    .attr('font-size', '12')
-    .text(function() {
-      return d[1]-d[0];  // Value of the text
-    });
-      console.log(d[1]-d[0]);
+    hisvg.append("text")
+      .attr("id", "tex_" +  i)
+      .attr("x",  rec.x.baseVal.value + 18)
+      .attr("y", rec.y.baseVal.value+5)
+      .attr('fill', 'black')
+      .attr('font-size', '12')
+      .text(function() {
+        return d[1]-d[0];  // Value of the text
+      });
+    
+      str=d.data['name'];
+      replaced = str.split(' ').join('_');
+      if(i<25){
+        tmp=0;
+      }else if(i<50){
+        tmp=1;
+      }else if(i<75){
+        tmp=2;
+      }else if(i<100){
+        tmp=3;
+      }else if(i<125){
+        tmp=4;
+      }else if(i<150){
+        tmp=5;
+      }
+      lsvg.selectAll('.c-'+tmp+'-'+replaced)
+      .attr('r', radius*1.5)
+      .attr('stroke', 'black');
+  }
+  function toggleShow(d,i){
+
+    if(toggle[i]==false){
+      d3.select(this).attr('fill', "white");
+      toggle[i]=true;
+    }else {
+      d3.select(this).attr('fill', z);
+      toggle[i]=false;
+  }
+  if(toggle[0]==true &&toggle[1]==true &&toggle[2]==true &&toggle[3]==true &&toggle[4]==true &&toggle[5]==true){
+    for(i=0;i<toggle.length;i++){
+      
+      d3.select('#le-'+i).attr('fill', z);
+      toggle[i]=false;
+    }
+  }
+    update(d);
   }
   function recMouseOut(d, i) {
     var rec=this;
-    d3.select(this).transition()
-      .duration(800).attr('stroke', '');
-      d3.select('#rec_'+i).remove();
-      d3.select('#tex_' +  i).remove();
+    d3.select(this).attr('stroke', '');
+    d3.select('#rec_'+i).remove();
+    d3.select('#tex_' +  i).remove();
+    console.log(d,i);
+    d.data['name'];
+    replaced = str.split(' ').join('_');
+    if(i<25){
+      tmp=0;
+    }else if(i<50){
+      tmp=1;
+    }else if(i<75){
+      tmp=2;
+    }else if(i<100){
+      tmp=3;
+    }else if(i<125){
+      tmp=4;
+    }else if(i<150){
+      tmp=5;
+    }
+    lsvg.selectAll('.c-'+tmp+'-'+replaced)
+    .attr('r', 0);
   }
   function drawHist(){
     updateHist();
+    hisvg.append('text')
+      .attr('id', 'textid')
+      .attr("x", 10)
+      .attr("y", 10)
+      .attr("dy", "0.32em")
+      .text(function(){
+        if(normalizedHist){
+          return 'denormalize'
+        }else{
+          return 'normalize'
+        }
+      })
+      .on('click', togglenorm);
 
-    hisvg.append("g")
-    .selectAll("g")
-    .data(series)
-    .join("g")
-      .attr("fill", d => z(d.key))
-    .selectAll("rect")
-    .data(d => d)
-    .join("rect")
-      .attr('class', 'rects')
-      .attr("x", (d, i) => scaleX(d.data.name))
-      .attr("y", d => scaleY(d[1]+1))
-      .attr("height", d => scaleY(d[0]+1) - scaleY(d[1]+1))
-      .attr("width", scaleX.bandwidth());   
+      if(!normalizedHist){
+        hisvg.append("g")
+        .selectAll("rect")
+        .data(series)
+        .join("g")
+        .attr("fill", d => z(d.key))
+          .selectAll("rect")
+        .data(d => d)
+        .join("rect")
+          .attr('class', 'rects')
+          .attr('id', function(d,i){
+          var  str=d.data.name;
+          var replaced = str.split(' ').join('_');
+            return 're-'+replaced;
+          })
+          .attr("x", (d, i) => scaleX(d.data.name))
+          .attr("y", d => scaleY(d[1]+1))
+          .attr("height", d => scaleY(d[0]+1) - scaleY(d[1]+1))
+          .attr("width", scaleX.bandwidth());  
+      }else{
+        scaleYnorm=d3.scaleLinear()
+          .domain([0,1])
+          .range([bheight-margin.bottom, margin.top+100])
+          hisvg.append("g")
+          .selectAll("rect")
+          .data(series)
+          .join("g")
+          .attr("fill", d => z(d.key))
+            .selectAll("rect")
+          .data(d => d)
+          .join("rect")
+            .attr('class', 'rects')
+            .attr('id', function(d,i){
+              var  str=d.data.name;
+              var replaced = str.split(' ').join('_')
+              return 're-'+replaced;})
+            .attr("x", (d, i) => scaleX(d.data.name))
+            .attr("y", function(d,i){
+              var sum=d.data['0m/s']+d.data['1m/s']+d.data['2m/s']+d.data['3-5m/s']+d.data['6-10m/s']+d.data['11-17m/s'];
+              
+            return scaleYnorm((d[1]/sum));
+            } )
+            .attr("height", function(d){
+              var sum=d.data['0m/s']+d.data['1m/s']+d.data['2m/s']+d.data['3-5m/s']+d.data['6-10m/s']+d.data['11-17m/s'];
+              return scaleYnorm((d[0]/sum))-scaleYnorm((d[1])/sum);
+            } )
+            .attr("width", scaleX.bandwidth());  
+      }
+    
+     
       var legend = hisvg.append("g").append("g")
       .attr("font-family", "sans-serif")
       .attr("font-size", 10)
@@ -183,48 +465,96 @@ dataset.then(function(data){
     .selectAll("g")
     .data(keys)
     .enter().append("g")
-      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+      .attr("transform", function(d, i) { return "translate(0," +  ((5-i) * 21 )+ ")"; });
 
   legend.append("rect")
-      .attr("x", width - margin.right-40)
-      .attr("width", 50)
-      .attr("height", 18)
-      .attr("fill", z);
+  .attr('id', function(d,i){
+    return "le-"+i;
+  })
+      .attr("x", width - margin.right)
+      .attr("width", 16)
+      .attr("height", 16)
+      .attr("fill", z)
+      .attr("stroke", z)
+      .attr('stroke-width', 2)
+      .on('click', toggleShow);
 
   legend.append("text")
-      .attr("x", width - 24)
-      .attr("y", 9.5)
+      .attr("x", width - 34)
+      .attr("y", 9)
       .attr("dy", "0.32em")
       .text(function(d) { return d; });
-      //  hisvg.append('rect')
-      //   .attr('class', 'rects')
-      //   .attr("id", "r-" +j+'-' +i)
-      //   .attr("x",  margin.left+(i*(width-margin.left-margin.right)/winArr[j].length))
-      //   .attr('y', height-margin.bottom)
-      //   .attr('height', 0)
-        
-      //   .attr("y",scaleY(winArr[j][i].count+1))
-      //   .attr('w, idth', ((width-margin.left-margin.right)/winArr[j].length)-1)
-      //   .attr('height', (height-margin.bottom)-scaleY(winArr[j][i].count+1))
-      //   .attr('fill', z(j))
-      //   .attr("rx", "3")
-      //   .attr('ry', "3");
-    
-      // hisvg.append('text')
-      //   .attr('class', 'histext')
-      //   .attr('id', "t-" + i)
-      //   .attr("y", scaleY(wd[i].count+1)-10)
-      //   .attr("x",margin.left+6.7+(i*(width-margin.left-margin.right)/wd.length))
-      //   .attr('fill', 'silver')
-      //   .attr('font-size', '10')
-      //   .style("text-anchor", "middle")
-      //   .text(wd[i].count);             
-    
-    
+ 
     d3.selectAll('.rects').on('mouseover', recMouseHover)
     .on('mouseout', recMouseOut); 
+   
   };
 
+  function togglenorm(){
+    if(!normalizedHist){
+      normalizedHist=true;
+      hisvg.selectAll('.rects').remove();
+      d3.select(this).remove();
+      drawHist();
+    }else{
+      normalizedHist=false;
+      hisvg.selectAll('.rects').remove();
+      d3.select(this).remove();
+      drawHist();
+    }
+    
+  }
+function update(d){
+  if(filtered.indexOf(d)==-1){
+    filtered.push(d);
+    if(filtered.length==keys.length){filtered=[];}
+  }else{
+    filtered.splice(filtered.indexOf(d),1);
+  }
+
+  var newKeys=[];
+  keys.forEach(function(d){
+    if(filtered.indexOf(d)==-1){
+      newKeys.push(d);
+    }
+  })
+
+series = d3.stack().keys(newKeys)(wd)
+ console.log(series)
+ var tmp=[];
+ var tmp1=[];
+ var cnt=0;
+  for(i=0;i<25;i++){
+    cnt=0;
+    tmp=[];
+    for(j=0;j<series.length;j++){
+      tmp.push(series[j][i][1]-series[j][i][0])
+    }
+    cnt=d3.max(tmp);
+    tmp1.push(cnt);
+  }
+  
+  scaleY.domain([1,d3.max(tmp1)+1]);//.range([bheight-margin.bottom, margin.top+20]);
+  hisvg.selectAll('.rects').remove();
+  hisvg.append("g")
+    .selectAll("rect")
+    .data(series)
+    .join("g")
+    .attr("fill", d => z(d.key))
+      .selectAll("rect")
+    .data(d => d)
+    .join("rect")
+      .attr('class', 'rects')
+      .attr('id',function(d,i){
+        var  str=d.data.name;
+        var replaced = str.split(' ').join('_')
+        return 're-'+replaced;})
+      .attr("x", d =>  scaleX(d.data.name))
+      .attr("y", d => scaleY(d[1]+1))
+      .attr("height", d => scaleY(d[0]+1) - scaleY(d[1]+1))
+      .attr("width", scaleX.bandwidth())
+      .on('mousover', recMouseHover).on('mouseout', recMouseOut); 
+}
   function updateHist(){
     d3.select('#actWindSpd').attr('value', wspd+' m/s')
     while(winArr.length){
@@ -274,21 +604,19 @@ dataset.then(function(data){
     for(i=0;i<wd.length;i++){
       ticks.push(wd[i].name);
     }
-    scaleY = d3.scaleLinear()
+    scaleY = d3.scaleLog()
       .domain([1, maxCnt])
-      .range([height-margin.bottom, margin.top+20]);
-    z.range(["#3288bd", "#99d594", "#e6f598", "#fee08b", "#fc8d59", "#d53e4f"]);
-    // scaleCol=d3.scaleLog()
-    //   .domain([minCnt+1, maxCnt+1])
-    //   .range([d3.color('lightblue'), d3.color('steelblue')]);
+      .range([bheight-margin.bottom, margin.top+20]);
+    z.range(["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"]);
     keys =['0m/s','1m/s', '2m/s', '3-5m/s', '6-10m/s', '11-17m/s'];
     z.domain(keys);
     series = d3.stack().keys(keys)(wd)
     scaleX= d3.scaleBand()
       .domain(ticks)     
-      .range([margin.left, width-margin.right]);
+      .range([margin.left, width-margin.right])
+      .paddingInner(0.1);
     hisvg.append("g")
-      .attr("transform", "translate(0," + (height-margin.bottom) + ")")
+      .attr("transform", "translate(0," + (bheight-margin.bottom) + ")")
       .call(d3.axisBottom(scaleX))
       .selectAll("text")	
       .style("text-anchor", "end")
@@ -298,20 +626,7 @@ dataset.then(function(data){
       .attr("transform", function(d) {
           return "rotate(-60)" 
           });
-    hisvg.attr("viewBox", [0, 0, width, height+95]);
-    
-          // hisvg.selectAll('.rects')
-          // .data(series)
-          // .join("g")
-          // .attr("fill", d => z(d.key))
-          // .selectAll("rect")
-          // .data(d => d)
-          // .join("rect")
-          // .transition().duration(800)        
-          // .attr("y", d => scaleY(d[1]))
-          // .attr("height", d => scaleY(d[0]) - scaleY(d[1]))
-          // .attr("width", scaleX.bandwidth()); 
-          
+    hisvg.attr("viewBox", [0, 0, width, bheight+92]);
      }
   
   function setNextSpd(){
@@ -342,30 +657,42 @@ dataset.then(function(data){
     // console.log('from: ' + a+' to '  + b)
     prSpan=[];
     hmSpan=[];
+    weatherdc=[];
+    scdata=[];
     if(a>0 && a<json_data.length && b>0 &&b<json_data.length){
       for(i = a; i <= b; i++){
         if(json_data[i][2]!=0){
           prSpan.push(json_data[i][2]);
           hmSpan.push(json_data[i][1]);
+          weatherdc.push(json_data[i][4]);
         }
-        
       }
       avgPr=[];
       avgHm=[];
+      predomWDC=[];
+      function mode(arr){
+        return arr.sort((a,b) =>
+              arr.filter(v => v===a).length
+            - arr.filter(v => v===b).length
+        ).pop();
+    }
       for (i = 0;i<=b-a ;i+=24) {
         prDay=prSpan.slice(i,i+24);   
         hmDay=hmSpan.slice(i,i+24);
+        predomWDC=weatherdc.slice(i,i+24);
         sumprD=0;
         sumhmD=0;
         for(j=0;j<prDay.length;j++){
           sumprD= sumprD + prDay[j];
           sumhmD= sumhmD + hmDay[j];
+          mostFreq = mode(predomWDC);
         }
         if(sumprD>0){
-          avgPr.push(sumprD/prDay.length);
-          avgHm.push(sumhmD/prDay.length);
+          scdata.push({'pressure': (sumprD/prDay.length), 'humidity' : sumhmD/prDay.length, 'description' : mostFreq})
+          avgPr.push([sumprD/prDay.length]);       
         }
       }
+      
       xMin=0; xMax=100;
       yMax= Math.max(...avgPr);yMin= Math.min(...avgPr);
     }else{
@@ -374,7 +701,7 @@ dataset.then(function(data){
     scale();
     drawData();
   }
-
+  getScatData();
   function scale(){
     console.log("scale");
     svg.attr("viewBox", [0, 0, width, height]);
@@ -399,29 +726,41 @@ dataset.then(function(data){
     xtrans = (height+margin.top-margin.bottom)/2;
     svg.append('g')
       .attr("transform", 'translate('+ ytrans +', 0)')
-      .attr('color', 'silver').call(yAxis);
+      .attr('color', 'black').call(yAxis);
     svg.append('g')
       .attr("transform", 'translate(0, '+ xtrans +')')
-      .attr('color', 'silver').call(xAxis);
+      .attr('color', 'black').call(xAxis);
     svg.append('text')
       .attr("y", margin.top)
       .attr("x",width/2)
-      .attr('fill', 'silver')
+      .attr('fill', 'black')
       .style("text-anchor", "middle")
       .text("Pressure");      
     svg.append('text')
       .attr("y", height/2-10)
       .attr("x",50)
-      .attr('fill', 'silver')
+      .attr('fill', 'black')
       .style("text-anchor", "middle")
       .text("Humidity");         
   } 
-  function handleMouseOver(d, i) {  // Add interactivity
+  function handleMouseOver(d,i) {  // Add interactivity
     // Use D3 to select element, change color and size
     var circle = this;
-    d3.selectAll('.circles').transition().duration(800).attr('fill-opacity', 0.3);
+    console.log(d,i);
+    //console.log(avgWD);
+    str=d.description;
+      replaced = str.split(' ').join('_');
+    hisvg.selectAll('#re-'+replaced).attr('stroke', 'black');
+    svg.selectAll('.circles').attr('fill-opacity', 1).attr('stroke-opacity', 1)
+      .transition()
+      .duration(800)
+      .attr('fill-opacity', 0.3)
+      .attr('stroke-opacity', 0.3);
     d3.select(this).transition()
-      .duration(800).attr('fill', "red").attr('fill-opacity', 1).attr('r', radius*2);
+      .duration(800)
+      .attr('fill-opacity', 1)
+      .attr('stroke-opacity', 1)
+      .attr('r', radius*2);
     // console.log("t" + circle.cx.baseVal.valueAsString+ "-" + circle.cy.baseVal.valueAsString+ "-" + i);
     // Specify where to put label of text
     svg.append("rect")
@@ -441,12 +780,48 @@ dataset.then(function(data){
       .text(function() {
         return x1(circle.cx.baseVal.value).toFixed(2) +'%, ' + y1(circle.cy.baseVal.value).toFixed(2)+ 'mbar';  // Value of the text
       });
+      str = this.className.baseVal;
+      str= str.substring(8,21);
+      lsvg.selectAll('#'+str).attr('stroke', 'black')
+      .attr('r', radius*1.5);
+
+     
+      str = this.className.baseVal;
+      str= str.substring(10,20);
+  }
+
+  function oncirClick(d,i){
+    var d0 = new Date(str),
+    d1 = new Date(str);
+    d0.setHours(d0.getHours()-5);
+    d1.setHours(d1.getHours()+24);
+    console.log(d0,d1)
+    focus.call(zoom.transform, d3.zoomIdentity
+      .scale(1)
+      .translate(0, 0));
+  
+      focus.call(zoom.transform, d3.zoomIdentity
+        .scale(width1 / (tempScaleX(d1) - tempScaleX(d0)))
+        .translate(-tempScaleX(d0), 0));   
   }
   function handleMouseOut(d, i) {
+  /*  var d0 = new Date(stDate),
+    d1 = new Date(enDate);
+    d0.setHours(d0.getHours()+24);
+    d1.setHours(d1.getHours()-24);
+  lsvg.call(zoom.transform, d3.zoomIdentity
+    .scale(width1/ (tempScaleX(enDate) - tempScaleX(stDate)))
+    .translate(-tempScaleX(stDate)+margin1.left, 0)); */
+    str=d.description;
+    replaced = str.split(' ').join('_');
+    hisvg.selectAll('#re-'+replaced).attr('stroke', 'none')
     // Use D3 to select element, change color back to normal
-    
-    d3.selectAll('.circles').transition()
-    .duration(200).attr('r', radius).attr('fill-opacity', 1);
+    str = this.className.baseVal;
+    str= str.substring(8,21);
+    lsvg.selectAll('#'+str).attr('stroke', 'none')
+    .attr('r', lr);
+    svg.selectAll('.circles').transition()
+    .duration(200).attr('r', radius*1.5).attr('fill-opacity', 1).attr('stroke-opacity', 1);
       var circle=this;
       // Select text & rect by id and then remove
     document.getElementById('t' + circle.cx.baseVal.valueAsString + "-" + circle.cy.baseVal.valueAsString + "-" + i)
@@ -455,32 +830,45 @@ dataset.then(function(data){
       .remove();  
   }
   function setNextDate(){
-    console.log('setNext');
-    stDate.setMonth(stDate.getMonth()+3);
-    enDate.setMonth(enDate.getMonth()+3);
-    d3.selectAll('.circles').remove();
-    d3.select('svg').selectAll('g').remove();
+    for(i=0;i<toggle.length;i++){
+      toggle[i]=false;
+    }
+    update();
+    stDate.setMonth(stDate.getMonth()+steps);
+    enDate.setMonth(enDate.getMonth()+steps);
+    svg.selectAll('.circles').remove();
+    svg.selectAll('g').remove();
     getScatData();
     scale();
     drawData();
     hisvg.selectAll('.rects').remove();
+    hisvg.select('#textid').remove();
     getHistData();
     drawHist();
+    lsvg.selectAll('circle').remove();
+    lsvg.selectAll('g').remove();
     updateline();
+    
     d3.select('#dateRange').html(stDate.toDateString() +' - ' +enDate.toDateString());
   }
   function setPrevDate(){
-    console.log('setPrev');
-    stDate.setMonth(stDate.getMonth()-3);
-    enDate.setMonth(enDate.getMonth()-3);
-    d3.selectAll('.circles').remove();
-    d3.select('svg').selectAll('g').remove();
+    for(i=0;i<toggle.length;i++){
+      toggle[i]=false;
+    }
+    update();
+    stDate.setMonth(stDate.getMonth()-steps);
+    enDate.setMonth(enDate.getMonth()-steps);
+    svg.selectAll('.circles').remove();
+    svg.selectAll('g').remove();
     getScatData();
     scale();
     drawData();
+    hisvg.select('#textid').remove()
     hisvg.selectAll('.rects').remove();
     getHistData();
     drawHist();
+    lsvg.selectAll('circle').remove();
+    lsvg.selectAll('g').remove();
     updateline();
     d3.select('#dateRange').html(stDate.toDateString() +' - '+enDate.toDateString());
   }
@@ -490,20 +878,48 @@ dataset.then(function(data){
   d3.select('#prevWindSpd').on('click', setPrevSpd);
   d3.select('#nextWindSpd').on('click', setNextSpd);
   function drawData(){
-    var myColor = d3.scaleLinear().domain([yMin,yMax])
-      .range(["blue", "red"])
-    for(i=0;i<=avgHm.length-1;i++){
-    svg.append("circle")
-      .attr('class', 'circles')
-      .attr('id', 'c-'+i)
-      .attr("cx",x(avgHm[i]))
-      .attr("cy",y(avgPr[i]))
-      .attr("r",radius)
-      .style("fill", myColor(avgPr[i]));
-     
-    }
-    d3.selectAll('.circles').on('mouseover', handleMouseOver)
-      .on('mouseout', handleMouseOut);
+    var myColor = d3.scaleOrdinal()
+      .range(['#ffd92f', "#969696", '#4292c6', '#6e016b'])
+      .domain(['good_weather', 'cloudy_weather', 'rainy weather', 'stormy weather']);
+      console.log(scdata)
+    //   var scLegend = svg.append("g").append("g")
+    //   .attr("font-family", "sans-serif")
+    //   .attr("font-size", 10)
+    //   .attr("text-anchor", "end")
+    // .selectAll("g")
+    // .data(myColor.domain)
+    // .enter().append("g")
+    //   .attr("transform", function(d, i) { return "translate(0," +  ((5-i) * 21 )+ ")"; });
+    
+    
+      svg.selectAll("circle")
+      .data(scdata).enter().append('circle')
+      .attr('class', function(d,i){
+        actDay= new Date(stDate);
+        actDay.setHours(i*24)
+        var str= actDay.toISOString();
+      return 'circles c-'+str.substring(0,11)
+      })
+      .attr("cx", function(d){
+        return x(d.humidity)
+      })
+      .attr("cy", function(d){return y(d.pressure)})
+      .attr("r", radius*1.5)
+      .attr('stroke', 'black')
+      .style("fill", function(d){
+        if(d.description=='sky is clear' || d.description=='mist'||d.description=='few clouds'){
+          return myColor('good_weather');
+        }else if(d.description=='overcast clouds' ||d.description=='fog'||d.description=='haze'||d.description=='broken clouds' ||d.description=='scattered clouds' ||d.description=='dust' ||d.description=='smoke'){
+          return myColor('cloudy_weather');
+        }else if(d.description=='light rain' ||d.description=='moderate rain' ||d.description=='shower rain' ||d.description=='drizzle' ||d.description=='light intensity shower rain' ||d.description=='squalls' ||d.description=='proximity shower rain' ||d.description=='light intensity drizzle'){
+          return myColor('rainy weather');
+        }else if(d.description=='thunderstorm with rain' ||d.description=='thunderstorm' ||d.description=='thunderstorm with light rain' ||d.description=='proximity thunderstorm' ||d.description=='thunderstorm with heavy rain' ||d.description=='very large rain' ||d.description=='heavy intensity rain' ){
+          return myColor('stormy weather')
+        }
+        
+      }).on('mouseover', handleMouseOver)
+      .on('mouseout', handleMouseOut)
+      .on('click',oncirClick);  
   }
   drawData();
   drawHist();

@@ -5,7 +5,6 @@
             font-family: arial, sans-serif;
             font-size: 14px;
         }
-
         h1 {
             font-size: 35px;
             color: #000;
@@ -19,14 +18,15 @@
 
         #header {
             position: relative;
-            top: 10px;
-            left: 10px;
+            width:300px;
+        }
+        #dateRange{
+            float: left;
         }
         #scbtn {
-            align-content: center;
             float: left;
             height:50px;
-            width: 400px ;
+            width: 150px ;
         }
         .axis { font: 14px sans-serif; }
 
@@ -35,6 +35,16 @@
             stroke: steelblue;
             stroke-width: 1px;
              }
+        .pastAvgline{
+            fill: none;
+            stroke: black;
+            stroke-width: 1.2px;
+        }
+        .futAvgline{
+            fill: none;
+            stroke: red;
+            stroke-width: 1.2px;
+        }
 
         #hibtn {
             align-content: center;
@@ -43,8 +53,25 @@
             width: 400px ;
         }
         .plot {
-            float: left;
-            height: 400px;
-            width: 400px ;
+            height:1000px;
+            width: 2400px ;
         }
-       
+        .zoom {
+            cursor: move;
+            fill: none;
+            pointer-events: none;
+          }
+
+          #chart{
+            height: 10px;
+            width: 350px;
+          }
+          #lchart{
+            float: left;
+            height: 330px;
+            width: 800px;
+          }
+          #chartbox{
+            height: 10px;
+            width: 350px;
+          }
