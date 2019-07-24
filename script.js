@@ -11,7 +11,7 @@ dataset.then(function(data){
   var stDate= new Date('2012-12-31 00:00:00');  //dateRange
   var enDate=new Date('2013-06-30 00:00:00');
   var steps=6;// 6 month steps
-  let movingSpan=360; // moving average hours
+  let movingSpan=96; // moving average hours
   var margin = {top: 20, right: 30, bottom: 30, left: 40};
   d3.select('#dateRange').html(stDate.toDateString() +' - ' +enDate.toDateString());
   var hisvg = d3.select('#chart').append('svg'); // histogram svg
@@ -32,7 +32,7 @@ dataset.then(function(data){
   var margin2= {top: 300, right: 120, bottom: 40, left: 40};// context
   var height1; var width1;
   var height2; var x2;var y2; var brush; var zoom;
-  var line2 = d3.line(), movAvgpast=d3.line(), movAvgfut=d3.line(); 
+  var line2 = d3.line(), movAvgpast=d3.line(), dailyAvg=d3.line(); 
   var selectCircle;  var context; var focus; var lineChart;
 
   var prSpan=[];  var hmSpan=[];  var prDay=[]; var clip;
@@ -49,12 +49,13 @@ dataset.then(function(data){
     while(tempData.length){
       tempData.pop();
     }
+    // getting the data of the time span
     for(i=0;i<json_data.length;i++){
       if(json_data[i][3]!=0 && json_data[i][0]>=stDate && json_data[i][0]<=enDate){
-        var tmp=[json_data[i][0],json_data[i][3], json_data[i][4],json_data[i][5]];
+        var tmp=[json_data[i][0],json_data[i][3]-273.15, json_data[i][4],json_data[i][5]];
         tempData.push(tmp);
       }
-    }// getting the data of the time span
+    }
     maxTmp=[];
     for(i=0;i<tempData.length;i++){
       var tmp=tempData[i][1];
@@ -113,16 +114,17 @@ dataset.then(function(data){
             return tempScaleY(sum/movingSpan);
           }
       });
-      movAvgfut.defined(function(d, i) { 
-        return i>movingSpan/2 && i<tempData.length-(movingSpan/2); 
+      let  avg=24;
+      dailyAvg.defined(function(d, i) { 
+        return i>avg && i<tempData.length; 
       }).x(function(d, i) { return tempScaleX(tempData[i][0]); })
         .y(function(d,i){
-        let sum=0;
-        for(j=i-(movingSpan/2);j<i+(movingSpan/2);j++){
-          sum+=tempData[j][1]
-        }
-        return tempScaleY(sum/movingSpan);
-      
+         let sum=0;
+         for(j=i-(avg);j<i;j++){
+           sum+=tempData[j][1]
+         }
+      //  tmp=((tempData[i][1]-tempData[i-1][1])*(2/avg+1))+tempData[i-1][1]
+        return tempScaleY(sum/avg);
       });
 
       //applying scales to the graph
@@ -153,9 +155,9 @@ dataset.then(function(data){
         .attr('class', 'axis axis--y')
         .call(tyAxis);
       lsvg.append('text')
-        .attr('x',0)
+        .attr('x',15)
         .attr('y',18)
-        .text('Kelvin')
+        .text('°C')
       lineChart.append('path')
         .datum(tempData)
         .attr('class', 'line')
@@ -167,7 +169,7 @@ dataset.then(function(data){
       lineChart.append('path')
         .datum(tempData)
         .attr('class', 'futAvgline')
-        .attr('d', movAvgfut)
+        .attr('d', dailyAvg)
       context.append('path')
         .datum(tempData)
         .attr('class', 'line')
@@ -204,7 +206,7 @@ dataset.then(function(data){
         .attr('x', width1+margin.left+8)
         .attr('y',100)
         .attr('fill', 'red')
-        .text('moving Average future');
+        .text('moving Average 24h');
       lsvg.append('text')
         .attr('class', 'ltext')
         .attr("font-family", "sans-serif")
@@ -213,7 +215,7 @@ dataset.then(function(data){
         .attr('x', width1+margin.left+8)
         .attr('y',120)
         .attr('fill', 'black')
-        .text('  moving Average past');
+        .text('  moving Average 4d');
       lsvg.append('rect')
         .attr('class', 'zoom')
         .attr('width', width1)
@@ -273,7 +275,7 @@ dataset.then(function(data){
     lineChart.selectAll('.pastAvgline')
       .attr('d', movAvgpast);
     lineChart.selectAll('.futAvgline')
-      .attr('d', movAvgfut);
+      .attr('d', dailyAvg);
     lsvg.selectAll(".circle")
         .attr('cx',  function(d, i) { return tempScaleX(tempData[i][0]); });
 
@@ -292,7 +294,7 @@ dataset.then(function(data){
     lineChart.selectAll('.pastAvgline')
       .attr('d', movAvgpast);
     lineChart.selectAll('.futAvgline')
-      .attr('d', movAvgfut);
+      .attr('d', dailyAvg);
 
     focus.selectAll(".axis--x").call(txAxis);
     lsvg.selectAll(".circle")
@@ -813,8 +815,9 @@ dataset.then(function(data){
       }
         
       xMin=0; xMax=100;
+      //yMax=d3.max(avgPr); yMin=d3.min(avgPr)
       //fixed max and min for better visualizing relations 
-      yMax= d3.max(avgPr); yMin=1000;
+      yMax= 1045; yMin=990;
     }else{
       alert("DateRange "+stDate.toDateString() +' - ' +enDate.toDateString()+" is invalid");
     }
@@ -987,9 +990,9 @@ dataset.then(function(data){
       .attr("r", radius*1.5)
       .attr('stroke', 'black')
       .style("fill", function(d){
-        if(d.description=='sky is clear' || d.description=='mist'||d.description=='few clouds'){
+        if(d.description=='sky is clear' ||d.description=='few clouds'){
           return myColor('good_weather');
-        }else if(d.description=='overcast clouds' ||d.description=='fog'||d.description=='haze'||d.description=='broken clouds' ||d.description=='scattered clouds' ||d.description=='dust' ||d.description=='smoke'){
+        }else if(d.description=='overcast clouds' || d.description=='mist'||d.description=='fog'||d.description=='haze'||d.description=='broken clouds' ||d.description=='scattered clouds' ||d.description=='dust' ||d.description=='smoke'){
           return myColor('cloudy_weather');
         }else if(d.description=='light rain' ||d.description=='moderate rain' ||d.description=='shower rain' ||d.description=='drizzle' ||d.description=='light intensity shower rain' ||d.description=='squalls' ||d.description=='proximity shower rain' ||d.description=='light intensity drizzle'){
           return myColor('rainy_weather');
