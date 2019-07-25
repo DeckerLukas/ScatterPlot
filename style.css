@@ -5,6 +5,7 @@
             font-family: arial, sans-serif;
             font-size: 14px;
         }
+
         h1 {
             font-size: 35px;
             color: #000;
@@ -24,6 +25,14 @@
             padding-left:10px;
             padding-top:15px;
            
+        }
+        #timeSelect{
+            float: left;
+            margin-right: 20px;
+        }
+        #movingSpanSel{
+            float: left;
+            margin-left: 20px;
         }
         #dateRange{
             

@@ -15,10 +15,27 @@
             <h1>Los Angeles Weather</h1>
             
             <div id='scbtn'>
-                    <input id="prevData" type="button" value="<-"/>
-                    <div id='dateRange'></div>
-                    <input id="nextData" type="button" value="->"/>
+                <div id='timeSelect'>
+                    Select the displayed TimeSpan
+                    <select id='timeSelection'>
+                        <option value="1">1 Month</option>
+                        <option value="3" selected="selected">3 Months</option>
+                        <option value="6">6 Months</option>
+                        <option value="12">1 Year</option>
+                    </select>
                 </div>
+                <input id="prevData" type="button" value="<-"/>
+                <div id='dateRange'></div>
+                <input id="nextData" type="button" value="->"/>
+                <div id='movingSpanSel'>
+                        Select the moving Span
+                        <select id='movingSpanSelection'>
+                            <option value="168">1 Week</option>
+                            <option value="336"selected="selected">2 Weeks</option>
+                            <option value="672">4 Weeks</option>
+                        </select>
+                    </div>
+            </div>
         </div>            
         <div class="plot">
 

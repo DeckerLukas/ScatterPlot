@@ -9,9 +9,15 @@ dataset.then(function(data){
   var radius =2; var lr=0;
   var filtered=[]; var weatherdc=[];
   var stDate= new Date('2012-12-31 00:00:00');  //dateRange
-  var enDate=new Date('2013-06-30 00:00:00');
-  var steps=6;// 6 month steps
-  let movingSpan=96; // moving average hours
+  var e = document.getElementById("timeSelection");
+  var steps = +e.options[e.selectedIndex].value;
+  var enDate=new Date(stDate);
+  enDate.setMonth(enDate.getMonth()+steps);
+  enDate.setHours(0,0,0);
+  var f = document.getElementById("movingSpanSelection");
+  var movingSpan = +f.options[e.selectedIndex].value; // moving average hours
+  console.log(movingSpan);
+  // var enDate=new Date('2013-06-30 00:00:00');
   var margin = {top: 20, right: 30, bottom: 30, left: 40};
   d3.select('#dateRange').html(stDate.toDateString() +' - ' +enDate.toDateString());
   var hisvg = d3.select('#chart').append('svg'); // histogram svg
@@ -250,17 +256,17 @@ dataset.then(function(data){
         .attr('transform', 'translate(0,0)')
         .attr('fill', function(d,i){
           if(d[3]==0){
-            return '#1a9850';
+            return '#1b7837';
           }else if(d[3]==1){
-            return '#91cf60';
+            return '#7fbf7b';
           }else if(d[3]==2){
-            return '#d9ef8b';
+            return '#d9f0d3';
           } else if(d[3]>=3 &&d[3]<=5){
-            return'#fee08b';
+            return '#e7d4e8';
           }else if(d[3]>=6 && d[3]<=10){
-            return '#fc8d59';
+            return '#af8dc3';
           }else if(d[3]>=11 &&d[3]<=17){
-            return '#d73027';
+            return '#762a83';
           }
         })
         .on('mouseover', mover).on('mouseout', mout)
@@ -727,7 +733,7 @@ dataset.then(function(data){
     scaleY = d3.scaleLog()
       .domain([1, maxCnt])
       .range([bheight-margin.bottom, margin.top+20]);
-    z.range(["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"]);
+    z.range(["#1b7837", "#7fbf7b", "#d9f0d3", "#e7d4e8", "#af8dc3", "#762a83"]);
     keys =['0m/s','1m/s', '2m/s', '3-5m/s', '6-10m/s', '11-17m/s'];
     z.domain(keys);
     series = d3.stack().keys(keys)(wd)
