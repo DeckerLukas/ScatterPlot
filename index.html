@@ -12,8 +12,24 @@
 <body>
     <div class="main">
         <div id="header">                
-            <h1>Los Angeles Weather</h1>
-            
+            <h1>Weather Data of big Cities</h1>
+            <div id='cities'>
+               
+                <select id='citySelection'>
+                    <option value="LosAngeles" selected="selected">Los Angeles</option>
+                    <option value="NewYork" >New York</option>
+                    <option value="LasVegas">Las Vegas</option>
+                    <option value="SanFrancisco">San Francisco</option>
+                </select>
+                <!-- to
+                <select id='citySelection2'>
+                        <option  selected="selected">none</option>
+                    <option value="LosAngeles" >Los Angeles</option>
+                    <option value="NewYork">New York</option>
+                    <option value="LasVegas">Las Vegas</option>
+                    <option value="SanFrancisco">San Francisco</option>
+                </select> -->
+            </div>
             <div id='scbtn'>
                 <div id='timeSelect'>
                     Select the displayed TimeSpan
@@ -21,17 +37,17 @@
                         <option value="1">1 Month</option>
                         <option value="3" selected="selected">3 Months</option>
                         <option value="6">6 Months</option>
-                        <option value="12">1 Year</option>
                     </select>
                 </div>
                 <input id="prevData" type="button" value="<-"/>
                 <div id='dateRange'></div>
                 <input id="nextData" type="button" value="->"/>
                 <div id='movingSpanSel'>
-                        Select the moving Span
+                        Select the moving Average Span
                         <select id='movingSpanSelection'>
-                            <option value="168">1 Week</option>
+                            <option value='168'>1 Week</option>
                             <option value="336"selected="selected">2 Weeks</option>
+                            <option value="504">3 Weeks</option>
                             <option value="672">4 Weeks</option>
                         </select>
                     </div>

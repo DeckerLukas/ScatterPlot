@@ -26,6 +26,9 @@
             padding-top:15px;
            
         }
+        #cities{
+            margin-bottom:10px;
+        }
         #timeSelect{
             float: left;
             margin-right: 20px;
@@ -38,8 +41,9 @@
             
             float: left;
             height:50px;
-            width: 230px ;
+            width: 250px ;
         }
+
         #scbtn {
             height:50px;
             width: all;
@@ -58,7 +62,8 @@
 
         path.line {
             fill: none;
-            stroke: steelblue;
+            stroke: steelblue; 
+         
             stroke-width: 1px;
              }
         .pastAvgline{
@@ -80,8 +85,6 @@
         }
         .plot {
             float: left;
-            height:1000px;
-            width: 350px ;
         }
         .zoom {
             cursor: move;
@@ -95,13 +98,30 @@
             width: 350px;
           }
           #lchart{
-            float: left;
+              float: left;
             margin-top:0px;
             margin-left:20px;
             height: 400px;
             width: 20px;
           }
           #chartbox{
+            float: left;
+            height: 350px;
+            width: 350px;
+          }
+          #chart2{
+              float: left;
+            height: 280px;
+            width: 350px;
+          }
+          #lchart2{
+            float: left;
+            margin-top:0px;
+            margin-left:20px;
+            height: 400px;
+            width: 20px;
+          }
+          #chartbox2{
             float: left;
             height: 350px;
             width: 350px;

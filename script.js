@@ -1,14 +1,35 @@
 //console.log(_dataset[0].datetime);
-
+function drawAllGraphs(){
 dataset.then(function(data){
   //callbackfunc is now here.....
   //global Variable declaration
+  var weatherdescriptions = d3.map(data, function(d){return d[4];}).keys();
+  for(i=0;i<weatherdescriptions.length;i++){
+    if ( weatherdescriptions[i] === '') {
+      weatherdescriptions.splice(i, 1); 
+    }
+  }
+  console.log(weatherdescriptions);
+  var wspd =d3.map(data, function(d){
+return d[5];
+  }).keys();
+  console.log(wspd);
+  for(i=0;i<wspd.length;i++){
+    if ( wspd[i] === '') {
+      wspd.splice(i, 1); 
+    }else{
+      wspd[i]= +wspd[i];
+    }
+  }
+  wspd.sort((a, b) => a - b); // numerical sort use b - a for descending
+  console.log(wspd);
   var json_data=data;
   d3.select('#chartbox').html(null);
   var svg = d3.select('#chartbox').append('svg'); // for scatterplot
   var radius =2; var lr=0;
   var filtered=[]; var weatherdc=[];
-  var stDate= new Date('2012-12-31 00:00:00');  //dateRange
+  var stDate= new Date('December 31, 2012 00:00:00');  //dateRange
+
   var e = document.getElementById("timeSelection");
   var steps = +e.options[e.selectedIndex].value;
   var enDate=new Date(stDate);
@@ -24,7 +45,7 @@ dataset.then(function(data){
   var lsvg=d3.select('#lchart').append('svg');    // linechart svg
   
   var xMin;var xMax;var yMin;var yMax;var x;var y;var x1;var y1;
-  const height=350;  const width=400;
+  const height=320;  const width=400;
   const bheight=230; // bar chart height
   //legend
   var toggle=[];
@@ -44,11 +65,11 @@ dataset.then(function(data){
   var prSpan=[];  var hmSpan=[];  var prDay=[]; var clip;
   var hmDay=[];  var sumprD,sumhmD;  var avgPr=[]; var avgHm=[];var avgWD=[];
   var hisData=[]; var tempData=[]; var maxTmp=[];
-  var winData=[];var wd=[]; var keys;
+  var winData=[];var wd=[]; var keys=[];
   var scaleY;var scaleX ;
-  var wspd=0; var line = d3.line(); var tempScaleX; var tempScaleY; var txAxis; var tyAxis;
+  var line = d3.line(); var tempScaleX; var tempScaleY; var txAxis; var tyAxis;
   var winArr=[]; var z = d3.scaleOrdinal();
-  var actDay; var normalizedHist=false; var scdata=[];
+  var actDay; var normalizedHist=true; var scdata=[];
 
 
   function updateline(){  // main function for line chart
@@ -56,9 +77,10 @@ dataset.then(function(data){
       tempData.pop();
     }
     // getting the data of the time span
+    //i-7 for timezone offset -273.15 to convetrt kelvin to celsius
     for(i=0;i<json_data.length;i++){
       if(json_data[i][3]!=0 && json_data[i][0]>=stDate && json_data[i][0]<=enDate){
-        var tmp=[json_data[i][0],json_data[i][3]-273.15, json_data[i][4],json_data[i][5]];
+        var tmp=[json_data[i-7][0],json_data[i][3]-273.15, json_data[i][4],json_data[i][5]];
         tempData.push(tmp);
       }
     }
@@ -92,7 +114,7 @@ dataset.then(function(data){
     txAxis = d3.axisBottom(tempScaleX);
     tyAxis = d3.axisLeft(tempScaleY);
     txAxis2 = d3.axisBottom(x2);
-    //implementing brush and zoom
+    //brush and zoom
     brush = d3.brushX()
       .extent([[0,0], [width1, height2]])
       .on('brush end', brushed);
@@ -107,20 +129,27 @@ dataset.then(function(data){
         .curve(d3.curveMonotoneX); // apply smoothing to the line
       line2.x(function(d, i) { return x2(tempData[i][0]); })
         .y(function(d,i) { return y2(tempData[i][1]); });
+
+      
+      let a = json_data.findIndex(function(el) { return el[0].toString()==(stDate.toString())});
+      let b= json_data.findIndex( function(el) { return el[0].toString()==(enDate.toString())});
+      console.log(a)
       movAvgpast.defined(function(d, i) { 
-          return i>movingSpan; 
+          return i>=0; 
         })//defined can describe where the line is drawn (when statement is true)
-        .x(function(d, i) { return tempScaleX(tempData[i][0]); })
+        .x(function(d, i) {
+          return tempScaleX(tempData[i][0]); })
         .y(function(d,i){
-          let sum=0;
-          if(i>movingSpan){
-            for(j=i-movingSpan;j<i;j++){
-              sum = sum + tempData[j][1];
-            }
-            return tempScaleY(sum/movingSpan);
+          sum=0;
+          i=i+a;
+          for(j=i-movingSpan;j<i;j++){
+            sum = sum + (json_data[j][3]-273.15);
           }
+          
+        return tempScaleY(sum/movingSpan);
       });
-      let  avg=24;
+
+      let avg=24;
       dailyAvg.defined(function(d, i) { 
         return i>avg && i<tempData.length; 
       }).x(function(d, i) { return tempScaleX(tempData[i][0]); })
@@ -129,7 +158,7 @@ dataset.then(function(data){
          for(j=i-(avg);j<i;j++){
            sum+=tempData[j][1]
          }
-      //  tmp=((tempData[i][1]-tempData[i-1][1])*(2/avg+1))+tempData[i-1][1]
+      // tmp=((tempData[i][1]-tempData[i-1][1])*(2/avg+1))+tempData[i-1][1]
         return tempScaleY(sum/avg);
       });
 
@@ -162,7 +191,7 @@ dataset.then(function(data){
         .call(tyAxis);
       lsvg.append('text')
         .attr('x',15)
-        .attr('y',18)
+        .attr('y',15)
         .text('°C')
       lineChart.append('path')
         .datum(tempData)
@@ -212,7 +241,7 @@ dataset.then(function(data){
         .attr('x', width1+margin.left+8)
         .attr('y',100)
         .attr('fill', 'red')
-        .text('moving Average 24h');
+        .text('daily Average');
       lsvg.append('text')
         .attr('class', 'ltext')
         .attr("font-family", "sans-serif")
@@ -221,7 +250,7 @@ dataset.then(function(data){
         .attr('x', width1+margin.left+8)
         .attr('y',120)
         .attr('fill', 'black')
-        .text('  moving Average 4d');
+        .text('moving Average ' +movingSpan/24+ 'd');
       lsvg.append('rect')
         .attr('class', 'zoom')
         .attr('width', width1)
@@ -256,17 +285,17 @@ dataset.then(function(data){
         .attr('transform', 'translate(0,0)')
         .attr('fill', function(d,i){
           if(d[3]==0){
-            return '#1b7837';
+            return '#fdd0a2';
           }else if(d[3]==1){
-            return '#7fbf7b';
+            return '#fdae6b';
           }else if(d[3]==2){
-            return '#d9f0d3';
+            return '#fd8d3c';
           } else if(d[3]>=3 &&d[3]<=5){
-            return '#e7d4e8';
+            return '#f16913';
           }else if(d[3]>=6 && d[3]<=10){
-            return '#af8dc3';
+            return '#d94801';
           }else if(d[3]>=11 &&d[3]<=17){
-            return '#762a83';
+            return '#8c2d04';
           }
         })
         .on('mouseover', mover).on('mouseout', mout)
@@ -338,20 +367,24 @@ dataset.then(function(data){
     for(j=0;j<6;j++){
       var tmp = [];
       for(i=0;i<hisData.length;i++){
-        if(j<3){
+        if(j<2){
           if(hisData[i][1]==j){
             tmp.push(hisData[i][0]);
           }
+        }else if(j==2){
+          if(hisData[i][1]>=2&&hisData[i][1]<=Math.floor(d3.max(wspd)/6)){
+            tmp.push(hisData[i][0]);
+          }
         }else if(j==3){
-          if(hisData[i][1]>=3&&hisData[i][1]<=5){
+          if(hisData[i][1]>=Math.ceil(d3.max(wspd)/6)&&hisData[i][1]<=Math.floor(d3.max(wspd)/3)){
             tmp.push(hisData[i][0]);
           }
         }else if(j==4){
-          if(hisData[i][1]>=6&&hisData[i][1]<=10){
+          if(hisData[i][1]>=Math.ceil(d3.max(wspd)/3)&&hisData[i][1]<=Math.floor(d3.max(wspd)/2)){
             tmp.push(hisData[i][0]);
           }
         }else if(j==5){
-          if(hisData[i][1]>=11&&hisData[i][1]<=17){
+          if(hisData[i][1]>=Math.ceil(d3.max(wspd)/2)&&hisData[i][1]<=d3.max(wspd)){
             tmp.push(hisData[i][0]);
           }
         }
@@ -407,7 +440,6 @@ dataset.then(function(data){
         scaleYnorm=d3.scaleLinear()
           .domain([0,1])
           .range([bheight-margin.bottom, margin.top+100])
-          console.log('elsezweig');
           hisvg.append("g")
           .selectAll("rect")
           .data(series)
@@ -423,48 +455,52 @@ dataset.then(function(data){
               return 're-'+replaced;})
             .attr("x", (d, i) => scaleX(d.data.name))
             .attr("y", function(d,i){              
-              var sum=d.data['0m/s']+d.data['1m/s']+d.data['2m/s']+d.data['3-5m/s']+d.data['6-10m/s']+d.data['11-17m/s'];
+              var sum=d.data[keys[0]]+d.data[keys[1]]+d.data[keys[2]]+d.data[keys[3]]+d.data[keys[4]]+d.data[keys[5]];
               if(toggle[0]){
-                sum=sum-d.data['0m/s'];
+                sum=sum-d.data[keys[0]];
               }
               if(toggle[1]){
-                sum=sum-d.data['1m/s'];
+                sum=sum-d.data[keys[1]];
               }
               if(toggle[2]){
-                sum=sum-d.data['2m/s'];
+                sum=sum-d.data[keys[2]];
               }
               if(toggle[3]){
-                sum=sum-d.data['3-5m/s'];
+                sum=sum-d.data[keys[3]];
               }
               if(toggle[4]){
-                sum=sum-d.data['6-10m/s'];
+                sum=sum-d.data[keys[4]];
               }
               if(toggle[5]){
-                sum=sum-d.data['11-17m/s'];
+                sum=sum-d.data[keys[5]];
               }
             return scaleYnorm(((d[1])/sum));
             } )
             .attr("height", function(d){
-              var sum=d.data['0m/s']+d.data['1m/s']+d.data['2m/s']+d.data['3-5m/s']+d.data['6-10m/s']+d.data['11-17m/s'];
+              var sum=d.data[keys[0]]+d.data[keys[1]]+d.data[keys[2]]+d.data[keys[3]]+d.data[keys[4]]+d.data[keys[5]];
               if(toggle[0]){
-                sum=sum-d.data['0m/s'];
+                sum=sum-d.data[keys[0]];
               }
               if(toggle[1]){
-                sum=sum-d.data['1m/s'];
+                sum=sum-d.data[keys[1]];
               }
               if(toggle[2]){
-                sum=sum-d.data['2m/s'];
+                sum=sum-d.data[keys[2]];
               }
               if(toggle[3]){
-                sum=sum-d.data['3-5m/s'];
+                sum=sum-d.data[keys[3]];
               }
               if(toggle[4]){
-                sum=sum-d.data['6-10m/s'];
+                sum=sum-d.data[keys[4]];
               }
               if(toggle[5]){
-                sum=sum-d.data['11-17m/s'];
+                sum=sum-d.data[keys[5]];
               }
-              return scaleYnorm((d[0]/sum))-scaleYnorm((d[1])/sum);
+              if(sum>0){
+              return scaleYnorm(d[0]/sum)-scaleYnorm(d[1]/sum);
+              }else{
+                return 0;
+              }
             })
             .attr("width", scaleX.bandwidth());  
       }
@@ -515,22 +551,22 @@ dataset.then(function(data){
     var rec=this;
     console.log(d,i);
     if(toggle[0]){
-      i=i+25;
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[1]&&i>=25){
-      i=i+25;
+    if(toggle[1]&&i>=weatherdescriptions.length){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[2]&&i>=50){
-      i=i+25;
+    if(toggle[2]&&i>=weatherdescriptions.length*2){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[3]&&i>=75){
-      i=i+25;
+    if(toggle[3]&&i>=weatherdescriptions.length*3){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[4]&&i>=100){
-      i=i+25;
+    if(toggle[4]&&i>=weatherdescriptions.length*4){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[5]&&i>=125){
-      i=i+25;
+    if(toggle[5]&&i>=weatherdescriptions.length*5){
+      i=i+weatherdescriptions.length;
     }
     d3.select(this).attr('stroke', 'black');
     hisvg.append("rect")
@@ -554,17 +590,17 @@ dataset.then(function(data){
     
       str=d.data['name'];
       replaced = str.split(' ').join('_');
-      if(i<25){
+      if(i<weatherdescriptions.length){
         tmp=0;
-      }else if(i<50){
+      }else if(i<weatherdescriptions.length*2){
         tmp=1;
-      }else if(i<75){
+      }else if(i<weatherdescriptions.length*3){
         tmp=2;
-      }else if(i<100){
+      }else if(i<weatherdescriptions.length*4){
         tmp=3;
-      }else if(i<125){
+      }else if(i<weatherdescriptions.length*5){
         tmp=4;
-      }else if(i<150){
+      }else if(i<weatherdescriptions.length*6){
         tmp=5;
       }
       lsvg.selectAll('.c-'+tmp+'-'+replaced)
@@ -593,22 +629,22 @@ dataset.then(function(data){
   function recMouseOut(d, i) {
     var rec=this;
     if(toggle[0]){
-      i=i+25;
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[1]&&i>=25){
-      i=i+25;
+    if(toggle[1]&&i>=weatherdescriptions.length){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[2]&&i>=50){
-      i=i+25;
+    if(toggle[2]&&i>=weatherdescriptions.length*2){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[3]&&i>=75){
-      i=i+25;
+    if(toggle[3]&&i>=weatherdescriptions.length*3){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[4]&&i>=100){
-      i=i+25;
+    if(toggle[4]&&i>=weatherdescriptions.length*4){
+      i=i+weatherdescriptions.length;
     }
-    if(toggle[5]&&i>=125){
-      i=i+25;
+    if(toggle[5]&&i>=weatherdescriptions.length*5){
+      i=i+weatherdescriptions.length;
     }
     d3.select(this).attr('stroke', '');
     d3.select('#rec_'+i).remove();
@@ -616,17 +652,17 @@ dataset.then(function(data){
     //console.log(d,i);
     d.data['name'];
     replaced = str.split(' ').join('_');
-    if(i<25){
+    if(i<weatherdescriptions.length){
       tmp=0;
-    }else if(i<50){
+    }else if(i<weatherdescriptions.length*2){
       tmp=1;
-    }else if(i<75){
+    }else if(i<weatherdescriptions.length*3){
       tmp=2;
-    }else if(i<100){
+    }else if(i<weatherdescriptions.length*4){
       tmp=3;
-    }else if(i<125){
+    }else if(i<weatherdescriptions.length*5){
       tmp=4;
-    }else if(i<150){
+    }else if(i<weatherdescriptions.length*6){
       tmp=5;
     }
     lsvg.selectAll('.c-'+tmp+'-'+replaced)
@@ -665,7 +701,7 @@ dataset.then(function(data){
     var tmp=[];
     var tmp1=[];
     var cnt=0;
-    for(i=0;i<25;i++){
+    for(i=0;i<weatherdescriptions.length;i++){
       cnt=0;
       tmp=[];
       for(j=0;j<series.length;j++){
@@ -682,44 +718,49 @@ dataset.then(function(data){
     drawHist();
   }
   function updateHist(){ //scaling and calc the occured weather descriptions
-    d3.select('#actWindSpd').attr('value', wspd+' m/s')
+    keys=[];
+    for(i=0;i<6;i++){ // categorizing windspeeds in 6 categorys
+      if(i<2){
+        keys.push(wspd[i]+'m/s')
+      }
+      if(i==2){
+        keys.push('2-'+Math.floor(d3.max(wspd)/6)+'m/s')
+      }
+      if(i==3){
+        keys.push(Math.ceil(d3.max(wspd)/6)+'-'+Math.floor(d3.max(wspd)/3)+'m/s')
+      }
+      if(i==4){
+        keys.push(Math.ceil(d3.max(wspd)/3)+'-'+Math.floor(d3.max(wspd)/2)+'m/s');
+        //Math.floor(d3.max(wspd)/2)
+      }
+      if(i==5){
+        keys.push(Math.ceil(d3.max(wspd)/2)+'-'+d3.max(wspd)+'m/s');
+      }
+    }
+    //keys=[];
+    console.log(keys);
+   
     while(winArr.length){
       winArr.pop();
     }
    
     wd=[];
     var count = (search, arr) => arr.filter(x => x == search).length;
-    wd.push({'name': 'sky is clear', "0m/s": count('sky is clear', winData[0]), '1m/s':count('sky is clear', winData[1]), '2m/s' : count('sky is clear', winData[2]), '3-5m/s': count('sky is clear', winData[3]), '6-10m/s': count('sky is clear', winData[4]), '11-17m/s':count('sky is clear', winData[5])});
-    wd.push({'name': 'mist','0m/s': count('mist', winData[0]), '1m/s':count('mist', winData[1]), '2m/s' : count('mist', winData[2]), '3-5m/s': count('mist', winData[3]), '6-10m/s': count('mist', winData[4]), '11-17m/s':count('mist', winData[5])}); 
-    wd.push({'name': 'fog', '0m/s': count('fog', winData[0]), '1m/s':count('fog', winData[1]), '2m/s' : count('fog', winData[2]), '3-5m/s': count('fog', winData[3]), '6-10m/s': count('fog', winData[4]), '11-17m/s':count('fog', winData[5])}); 
-    wd.push({'name': 'haze', '0m/s': count('haze', winData[0]), '1m/s':count('haze', winData[1]), '2m/s' : count('haze', winData[2]), '3-5m/s': count('haze', winData[3]), '6-10m/s': count('haze', winData[4]), '11-17m/s':count('haze', winData[5])}); 
-    wd.push({'name': 'few clouds', '0m/s': count('few clouds', winData[0]), '1m/s':count('few clouds', winData[1]), '2m/s' : count('few clouds', winData[2]), '3-5m/s': count('few clouds', winData[3]), '6-10m/s': count('few clouds', winData[4]), '11-17m/s':count('few clouds', winData[5])});
-    wd.push({'name': 'overcast clouds', '0m/s': count('overcast clouds', winData[0]), '1m/s':count('overcast clouds', winData[1]), '2m/s' : count('overcast clouds', winData[2]), '3-5m/s': count('overcast clouds', winData[3]), '6-10m/s': count('overcast clouds', winData[4]), '11-17m/s':count('overcast clouds', winData[5])});
-    wd.push({'name': 'scattered clouds','0m/s': count('scattered clouds', winData[0]), '1m/s':count('scattered clouds', winData[1]), '2m/s' : count('scattered clouds', winData[2]), '3-5m/s': count('scattered clouds', winData[3]), '6-10m/s': count('scattered clouds', winData[4]), '11-17m/s':count('scattered clouds', winData[5])});
-    wd.push({'name': 'broken clouds', '0m/s': count('broken clouds', winData[0]), '1m/s':count('broken clouds', winData[1]), '2m/s' : count('broken clouds', winData[2]), '3-5m/s': count('broken clouds', winData[3]), '6-10m/s': count('broken clouds', winData[4]), '11-17m/s':count('broken clouds', winData[5])});
-    wd.push({'name': 'light rain', '0m/s': count('light rain', winData[0]), '1m/s':count('light rain', winData[1]), '2m/s' : count('light rain', winData[2]), '3-5m/s': count('light rain', winData[3]), '6-10m/s': count('light rain', winData[4]), '11-17m/s':count('light rain', winData[5])});
-    wd.push({'name': 'thunderstorm with rain',  '0m/s': count('thunderstorm with rain', winData[0]), '1m/s':count('thunderstorm with rain', winData[1]), '2m/s' : count('thunderstorm with rain', winData[2]), '3-5m/s': count('thunderstorm with rain', winData[3]), '6-10m/s': count('thunderstorm with rain', winData[4]), '11-17m/s':count('thunderstorm with rain', winData[5])});
-    wd.push({'name': 'moderate rain','0m/s': count('moderate rain', winData[0]), '1m/s':count('moderate rain', winData[1]), '2m/s' : count('moderate rain', winData[2]), '3-5m/s': count('moderate rain', winData[3]), '6-10m/s': count('moderate rain', winData[4]), '11-17m/s':count('moderate rain', winData[5])});
-    wd.push({'name': 'thunderstorm', '0m/s': count('thunderstorm', winData[0]), '1m/s':count('thunderstorm', winData[1]), '2m/s' : count('thunderstorm', winData[2]), '3-5m/s': count('thunderstorm', winData[3]), '6-10m/s': count('thunderstorm', winData[4]), '11-17m/s':count('thunderstorm', winData[5])});
-    wd.push({'name': 'shower rain','0m/s': count('shower rain', winData[0]), '1m/s':count('shower rain', winData[1]), '2m/s' : count('shower rain', winData[2]), '3-5m/s': count('shower rain', winData[3]), '6-10m/s': count('shower rain', winData[4]), '11-17m/s':count('shower rain', winData[5])});
-    wd.push({'name': 'smoke','0m/s': count('smoke', winData[0]), '1m/s':count('smoke', winData[1]), '2m/s' : count('smoke', winData[2]), '3-5m/s': count('smoke', winData[3]), '6-10m/s': count('smoke', winData[4]), '11-17m/s':count('smoke', winData[5])}); 
-    wd.push({'name': 'drizzle', '0m/s': count('drizzle', winData[0]), '1m/s':count('drizzle', winData[1]), '2m/s' : count('drizzle', winData[2]), '3-5m/s': count('drizzle', winData[3]), '6-10m/s': count('drizzle', winData[4]), '11-17m/s':count('drizzle', winData[5])}); 
-    wd.push({'name': 'light intensity shower rain',  '0m/s': count('light intensity shower rain', winData[0]), '1m/s':count('light intensity shower rain', winData[1]), '2m/s' : count('light intensity shower rain', winData[2]), '3-5m/s': count('light intensity shower rain', winData[3]), '6-10m/s': count('light intensity shower rain', winData[4]), '11-17m/s':count('light intensity shower rain', winData[5])}); 
-    wd.push({'name': 'very heavy rain', '0m/s': count('very heavy rain', winData[0]), '1m/s':count('very heavy rain', winData[1]), '2m/s' : count('very heavy rain', winData[2]), '3-5m/s': count('very heavy rain', winData[3]), '6-10m/s': count('very heavy rain', winData[4]), '11-17m/s':count('very heavy rain', winData[5])}); 
-    wd.push({'name': 'thunderstorm with light rain', '0m/s': count('thunderstorm with light rain', winData[0]), '1m/s':count('thunderstorm with light rain', winData[1]), '2m/s' : count('thunderstorm with light rain', winData[2]), '3-5m/s': count('thunderstorm with light rain', winData[3]), '6-10m/s': count('thunderstorm with light rain', winData[4]), '11-17m/s':count('thunderstorm with light rain', winData[5])}); 
-    wd.push({'name': 'proximity thunderstorm',  '0m/s': count('proximity thunderstorm', winData[0]), '1m/s':count('proximity thunderstorm', winData[1]), '2m/s' : count('proximity thunderstorm', winData[2]), '3-5m/s': count('proximity thunderstorm', winData[3]), '6-10m/s': count('proximity thunderstorm', winData[4]), '11-17m/s':count('proximity thunderstorm', winData[5])}); 
-    wd.push({'name': 'thunderstorm with heavy rain','0m/s': count('thunderstorm with heavy rain', winData[0]), '1m/s':count('thunderstorm with heavy rain', winData[1]), '2m/s' : count('thunderstorm with heavy rain', winData[2]), '3-5m/s': count('thunderstorm with heavy rain', winData[3]), '6-10m/s': count('thunderstorm with heavy rain', winData[4]), '11-17m/s':count('thunderstorm with heavy rain', winData[5])}); 
-    wd.push({'name': 'squalls', '0m/s': count('squalls', winData[0]), '1m/s':count('squalls', winData[1]), '2m/s' : count('squalls', winData[2]), '3-5m/s': count('squalls', winData[3]), '6-10m/s': count('squalls', winData[4]), '11-17m/s':count('squalls', winData[5])}); 
-    wd.push({'name': 'dust', '0m/s': count('dust', winData[0]), '1m/s':count('dust', winData[1]), '2m/s' : count('dust', winData[2]), '3-5m/s': count('dust', winData[3]), '6-10m/s': count('dust', winData[4]), '11-17m/s':count('dust', winData[5])}); 
-    wd.push({'name': 'proximity shower rain', '0m/s': count('proximity shower rain', winData[0]), '1m/s':count('proximity shower rain', winData[1]), '2m/s' : count('proximity shower rain', winData[2]), '3-5m/s': count('proximity shower rain', winData[3]), '6-10m/s': count('proximity shower rain', winData[4]), '11-17m/s':count('proximity shower rain', winData[5])}); 
-    wd.push({'name': 'light intensity drizzle', '0m/s': count('light intensity drizzle', winData[0]), '1m/s':count('light intensity drizzle', winData[1]), '2m/s' : count('light intensity drizzle', winData[2]), '3-5m/s': count('light intensity drizzle', winData[3]), '6-10m/s': count('light intensity drizzle', winData[4]), '11-17m/s':count('light intensity drizzle', winData[5])}); 
-    wd.push({'name': 'heavy intensity rain', '0m/s': count('heavy intensity rain', winData[0]), '1m/s':count('heavy intensity rain', winData[1]), '2m/s' : count('heavy intensity rain', winData[2]), '3-5m/s': count('dust', winData[3]), '6-10m/s': count('heavy intensity rain', winData[4]), '11-17m/s':count('heavy intensity rain', winData[5])}); 
-    
+    for(i=0;i<weatherdescriptions.length;i++){
+      wd.push({'name': weatherdescriptions[i]});
+        wd[i][keys[0]]=count(weatherdescriptions[i], winData[0]);
+        wd[i][keys[1]]=count(weatherdescriptions[i], winData[1]); 
+        wd[i][keys[2]]=count(weatherdescriptions[i], winData[2]);
+        wd[i][keys[3]]=count(weatherdescriptions[i], winData[3]);
+        wd[i][keys[4]]=count(weatherdescriptions[i], winData[4]);
+        wd[i][keys[5]]=count(weatherdescriptions[i], winData[5]);
+    }
+
     var tmp=[];
     console.log(wd);
     var maxCnt=0;
     for(i=0;i<wd.length;i++){
-      tmp.push(wd[i]['0m/s']+wd[i]['1m/s']+wd[i]['2m/s']+wd[i]['3-5m/s']+wd[i]['6-10m/s']+wd[i]['11-17m/s']);
+      tmp.push(wd[i][keys[0]]+wd[i][keys[1]]+wd[i][keys[2]]+wd[i][keys[3]]+wd[i][keys[4]]+wd[i][keys[5]]);
     }
     let cnt = d3.max(tmp);
     maxCnt = maxCnt + cnt;
@@ -733,8 +774,8 @@ dataset.then(function(data){
     scaleY = d3.scaleLog()
       .domain([1, maxCnt])
       .range([bheight-margin.bottom, margin.top+20]);
-    z.range(["#1b7837", "#7fbf7b", "#d9f0d3", "#e7d4e8", "#af8dc3", "#762a83"]);
-    keys =['0m/s','1m/s', '2m/s', '3-5m/s', '6-10m/s', '11-17m/s'];
+    z.range(["#fdd0a2", "#fdae6b", "#fd8d3c", "#f16913", "#d94801", "#8c2d04"]);
+    
     z.domain(keys);
     series = d3.stack().keys(keys)(wd)
     scaleX= d3.scaleBand()
@@ -747,12 +788,12 @@ dataset.then(function(data){
       .selectAll("text")	
       .style("text-anchor", "end")
       .attr('font-size', '10')
-      .attr("dx", "-.8em")
-      .attr("dy", ".12em")
+      .attr("dx", "-.55em")
+      .attr("dy", "-.05em")
       .attr("transform", function(d) {
           return "rotate(-60)" 
           });
-    hisvg.attr("viewBox", [0, 0, width, bheight+92]); // 92 for text 
+    hisvg.attr("viewBox", [0, 0, width, bheight+100]); // 92 for text 
   }
   updateHist();
   drawHist();
@@ -801,29 +842,32 @@ dataset.then(function(data){
         sumprD = 0;
         sumhmD = 0;
         helpArr=[];
-        prcnt=24;
-        hmcnt=24;
+        prcnt=0;
+        hmcnt=0;
         for(j=0;j<=prDay.length-1;j++){
+          
           if(prDay[j]==0){
-            console.log('0day: '+prDay[j])
-            prcnt=prcnt-1;
+            
+            prcnt=prcnt+1;
           }
           if(hmDay[j]==0){
-            hmcnt=hmcnt-1;
+           // console.log('0hm')
+            hmcnt=hmcnt+1;
           }
           sumprD= sumprD + prDay[j];
           sumhmD= sumhmD + hmDay[j]; 
         }
+        //console.log('prcnt: '+prcnt +' hmcnt: '+ hmcnt);
         helpArr=predomWDC.slice(0,predomWDC.length);
         mostFreq = mode(helpArr);
-        scdata.push({'date':json_data[a+24+i][0], 'pressure': (sumprD/prcnt), 'humidity' : (sumhmD/hmcnt), 'description' : mostFreq})
-        avgPr.push(sumprD/prcnt);          
+        scdata.push({'date':json_data[a+24+i][0], 'pressure': (sumprD/(prDay.length-prcnt)), 'humidity' : (sumhmD/(hmDay.length-hmcnt)), 'description' : mostFreq})
+        avgPr.push(sumprD/(prDay.length-prcnt));          
       }
         
       xMin=0; xMax=100;
-      //yMax=d3.max(avgPr); yMin=d3.min(avgPr)
+      //yMax=d3.max(avgPr); yMin=d3.min(avgPr);
       //fixed max and min for better visualizing relations 
-      yMax= 1045; yMin=990;
+      yMax= 1045; yMin=995;
     }else{
       alert("DateRange "+stDate.toDateString() +' - ' +enDate.toDateString()+" is invalid");
     }
@@ -832,7 +876,7 @@ dataset.then(function(data){
   }
   getScatData();
   function scale(){
-    console.log("scale");
+   
     svg.attr("viewBox", [0, 0, width, height]);
     //x= humidity %
     x = d3.scaleLinear()
@@ -963,13 +1007,13 @@ dataset.then(function(data){
       .enter().append('rect')
       .attr('x', width-40)
       .attr('y',function(d,i){
-       console.log(i)
+       
        return (i*20)+13;
       })
       .attr('width', 50)
       .attr('height', 2)
       .attr('fill', function(d,i){
-        console.log(d)
+        
           return myColor(d);
       });
     scLegend.data(['a','good_weather', 'cloudy_weather', 'rainy_weather', 'stormy_weather'])
@@ -979,14 +1023,14 @@ dataset.then(function(data){
       .attr("text-anchor", "end")
       .attr("x", width)
       .attr("y",function(d,i){
-        console.log(i)
+   
         return 10+(i*20);
       })
       .text(function(d) { return d; });
     svg.selectAll("circle")
       .data(scdata).enter().append('circle')
       .attr('class', function(d,i){
-       // console.log(d)
+      
       return 'circles c-'+d['date'].toISOString().substring(0,11)
       })
       .attr("cx", function(d){
@@ -998,11 +1042,11 @@ dataset.then(function(data){
       .style("fill", function(d){
         if(d.description=='sky is clear' ||d.description=='few clouds'){
           return myColor('good_weather');
-        }else if(d.description=='overcast clouds' || d.description=='mist'||d.description=='fog'||d.description=='haze'||d.description=='broken clouds' ||d.description=='scattered clouds' ||d.description=='dust' ||d.description=='smoke'){
+        }else if(d.description=='overcast clouds' || d.description=='mist'||d.description=='fog'||d.description=='haze'||d.description=='broken clouds' ||d.description=='scattered clouds' ||d.description=='dust' ||d.description=='smoke'||d.description=='light snow'||d.description=='heavy snow'){
           return myColor('cloudy_weather');
-        }else if(d.description=='light rain' ||d.description=='moderate rain' ||d.description=='shower rain' ||d.description=='drizzle' ||d.description=='light intensity shower rain' ||d.description=='squalls' ||d.description=='proximity shower rain' ||d.description=='light intensity drizzle'){
+        }else if(d.description=='light rain' ||d.description=='moderate rain' ||d.description=='shower rain' ||d.description=='drizzle' ||d.description=='light intensity shower rain' ||d.description=='squalls' ||d.description=='proximity shower rain' ||d.description=='light intensity drizzle'||d.description=="heavy intensity drizzle"){
           return myColor('rainy_weather');
-        }else if(d.description=='thunderstorm with rain' ||d.description=='thunderstorm' ||d.description=='thunderstorm with light rain' ||d.description=='proximity thunderstorm' ||d.description=='thunderstorm with heavy rain' ||d.description=='very large rain' ||d.description=='heavy intensity rain' ){
+        }else if(d.description=='thunderstorm with rain' ||d.description=='thunderstorm' ||d.description=='thunderstorm with light rain' ||d.description=='proximity thunderstorm' ||d.description=='thunderstorm with heavy rain' ||d.description=='very large rain' ||d.description=='heavy intensity rain' ||d.description=='proximity thunderstorm with rain' ){
           return myColor('stormy_weather');
         }
       }).on('mouseover', handleMouseOver)
@@ -1067,8 +1111,84 @@ dataset.then(function(data){
     updateline();
     d3.select('#dateRange').html(stDate.toDateString() +' - '+enDate.toDateString());
   }
+
+  function timeSelect(){
+    var e = document.getElementById("timeSelection");
+    steps = +e.options[e.selectedIndex].value;
+    enDate =new Date(stDate);
+    enDate.setMonth(enDate.getMonth()+steps);
+    console.log(steps)
+    stDate.setHours(stDate.getHours()-24);
+    enDate.setHours(enDate.getHours()-24);
+    svg.selectAll('.circles').remove();
+    svg.selectAll('g').remove();
+    svg.selectAll('text').remove();
+    getScatData();
+    svg.selectAll('text').remove();
+    scale();
+    drawData();
+    hisvg.selectAll('.textid').remove()
+    hisvg.selectAll('.rects').remove();
+    update();
+    getHistData();
+    updateHist();
+    hisvg.selectAll('.textid').remove()
+    drawHist();
+    togglenorm();
+    togglenorm();
+    lsvg.selectAll('circle').remove();
+    lsvg.selectAll('g').remove();
+    lsvg.selectAll('text').remove();
+    updateline();
+    d3.select('#dateRange').html(stDate.toDateString() +' - '+enDate.toDateString());
+
+  }
+  function movSpanSelect(){
+    var e = document.getElementById("movingSpanSelection");
+    movingSpan = +e.options[e.selectedIndex].value;
+    lsvg.selectAll('circle').remove();
+      lsvg.selectAll('g').remove();
+      lsvg.selectAll('text').remove();
+      updateline();
+  }
+  function citySelect(){
+    var e = document.getElementById("citySelection");
+    city = e.options[e.selectedIndex].value;
+    var json_data = d3.json(''+city+'.json').then(function(data){
+      return data;
+    });
+    dataset = json_data.then(function(value){
+      return Promise.all(value.map(function(results){
+          return [new Date(results.datetime), +results.humidity, +results.pressure, +results.temperature,results.weather_description, results.wind_speed];
+      }))
+    });
+    svg.remove();
+    hisvg.remove();
+    lsvg.remove();
+    drawAllGraphs();
+  }
+  function citySelect2(){
+    var e = document.getElementById("citySelection2");
+    city = e.options[e.selectedIndex].value;
+    // var json_data = d3.json(''+city+'.json').then(function(data){
+    //   return data;
+    // });
+    // dataset = json_data.then(function(value){
+    //   return Promise.all(value.map(function(results){
+    //       return [new Date(results.datetime), +results.humidity, +results.pressure, +results.temperature,results.weather_description, results.wind_speed];
+    //   }))
+    // });
+    // dataset.then(function(data){
+    
+    // });
+  }
   d3.select('#drawData').on('click', getScatData);
   d3.select('#prevData').on('click', setPrevDate);
   d3.select('#nextData').on('click', setNextDate); // adding functions to buttons 
-  
+  d3.select('#timeSelection').on('change', timeSelect);
+  d3.select('#movingSpanSelection').on('change', movSpanSelect)
+  d3.select('#citySelection').on('change', citySelect);
+  //d3.select('#citySelection2').on('change', citySelect2);
 });
+}
+drawAllGraphs();
