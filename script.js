@@ -123,14 +123,13 @@ return d[5];
       .translateExtent([0,0],[width1,height1])
       .extent([0,0],[width1,height1])
       .on('zoom', zoomed);
-    // declaring line scales
+      // declaring line scales
       line.x(function(d, i) { return tempScaleX(tempData[i][0]); }) // set the x values for the line generator
         .y(function(d,i) { return tempScaleY(tempData[i][1]); }) // set the y values for the line generator 
         .curve(d3.curveMonotoneX); // apply smoothing to the line
       line2.x(function(d, i) { return x2(tempData[i][0]); })
         .y(function(d,i) { return y2(tempData[i][1]); });
 
-      
       let a = json_data.findIndex(function(el) { return el[0].toString()==(stDate.toString())});
       let b= json_data.findIndex( function(el) { return el[0].toString()==(enDate.toString())});
       console.log(a)
@@ -161,7 +160,7 @@ return d[5];
       // tmp=((tempData[i][1]-tempData[i-1][1])*(2/avg+1))+tempData[i-1][1]
         return tempScaleY(sum/avg);
       });
-
+      
       //applying scales to the graph
       clip = lsvg.append('defs').append('svg:clipPath')
         .attr('id', 'clip')
